@@ -1,18 +1,32 @@
 <template>
   <div class="home">
-    <img alt="Vue logo" src="../assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
+    <h1>Markdown Editor</h1>
+    <MarkdownEditor />
   </div>
 </template>
 
 <script>
-// @ is an alias to /src
-import HelloWorld from '@/components/HelloWorld.vue'
+import MarkdownEditor from '@/components/MarkdownEditor.vue';
 
 export default {
   name: 'HomeView',
   components: {
-    HelloWorld
+    MarkdownEditor
   }
-}
+};
 </script>
+
+<style>
+.home {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #333;
+  color: white;
+}
+
+.home h1 {
+  text-align: center;
+  margin: 20px 0;
+}
+</style>
