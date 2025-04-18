@@ -1,54 +1,60 @@
 <template>
-    <div id="container">
-      <div id="editor">
-        <div id="toolbar">
-          <button id="bold-btn" @click="wrapTextWithMarkdown('**')">**粗體**</button>
-          <button id="italic-btn" @click="wrapTextWithMarkdown('*')">*斜體*</button>
-          <button id="code-btn" @click="wrapTextWithMarkdown('```')">```程式碼```</button>
-          <button id="unordered-list-btn" @click="insertListItem('- ')">無序清單</button>
-          <button id="ordered-list-btn" @click="insertListItem('1. ')">有序清單</button>
-          <button id="task-list-btn" @click="insertListItem('- [ ] ')">工作清單</button>
-          <button id="link-btn" @click="insertLink">[超連結](url)</button>
-          <button id="hr-btn" @click="insertHorizontalRule">水平線</button>
-        </div>  
-        <textarea 
-          id="markdown-input" 
-          placeholder="輸入 Markdown..." 
-          v-model="markdownText"
-          @input="updatePreview"
-          @keydown="handleKeyDown"
-          ref="textarea"
-        ></textarea>
+  <div id="container">
+    <div id="editor">
+      <div id="note-title-bar" class="note-title-bar">
+        <label for="note-title" class="note-title-label">檔案名稱：</label>
+        <div class="note-title-container">
+          <input
+            id="note-title"
+            type="text"
+            v-model="noteTitle"
+            placeholder="輸入筆記標題..."
+            class="note-title-input"
+          />
+          <button @click="updateNote" class="save-btn">儲存</button> <!-- 儲存按鈕 -->
+        </div>
       </div>
-      <div id="preview">
-        <div id="markdown-output" v-html="htmlOutput"></div>
+      <div id="toolbar">
+        <button id="bold-btn" @click="wrapTextWithMarkdown('**')">**粗體**</button>
+        <button id="italic-btn" @click="wrapTextWithMarkdown('*')">*斜體*</button>
+        <button id="code-btn" @click="wrapTextWithMarkdown('```')">```程式碼```</button>
+        <button id="unordered-list-btn" @click="insertListItem('- ')">無序清單</button>
+        <button id="ordered-list-btn" @click="insertListItem('1. ')">有序清單</button>
+        <button id="task-list-btn" @click="insertListItem('- [ ] ')">工作清單</button>
+        <button id="link-btn" @click="insertLink">[超連結](url)</button>
+        <button id="hr-btn" @click="insertHorizontalRule">水平線</button>
+        <button id="login-btn" @click="goToLogin">登入</button> <!-- 新增登入按鈕 -->
       </div>
+      <textarea
+        id="markdown-input"
+        placeholder="輸入 Markdown..."
+        v-model="markdownText"
+        @input="updatePreview"
+        @keydown="handleKeyDown"
+        ref="textarea"
+      ></textarea>
     </div>
+    <div id="preview">
+      <div id="markdown-output" v-html="htmlOutput"></div>
+    </div>
+  </div>
 </template>
   
 <script>
   import { marked } from 'marked';
   import hljs from 'highlight.js';
+  import axios from 'axios';
   import '@/assets/styles/markdown.css';
   
   export default {
     name: 'MarkdownEditor',
     data() {
       return {
+        noteTitle: '',
         markdownText: '',
-        htmlOutput: ''
+        htmlOutput: '',
+        noteId: localStorage.getItem('noteId'),
       };
-    },
-    mounted() {
-      marked.setOptions({
-        highlight: function(code) {
-          return hljs.highlightAuto(code).value;
-        },
-        langPrefix: 'hljs language-',
-        breaks: true
-      });
-      
-      this.updatePreview();
     },
     methods: {
       updatePreview() {
@@ -380,10 +386,92 @@
             });
           }
         }
-      }
+      },
+      goToLogin() {
+        this.$router.push('/login');  // 導向登入頁面
+      },
+      async fetchNote() {
+        try {
+          const response = await axios.post('/api/getNote', { noteId: this.noteId});
+          const note = response.data.note[0];
+          this.noteTitle = note.name || '';
+          if (note && note.content != null) {
+            this.markdownText = note.content;
+          }
+        } catch (error) {
+          console.error('取得筆記失敗：', error);
+          alert('無法取得筆記');
+        }
+      },
+      async updateNote() {
+        try {
+          const response = await axios.post('/api/updateNote', { noteId: this.noteId, name: this.noteTitle, content: this.markdownText});
+          console.log(response.data.node);
+          alert('儲存成功');
+        } catch (error) {
+          console.error('取得筆記失敗：', error);
+          alert('無法取得筆記');
+        }
+      },
+    },
+    async mounted() {
+      marked.setOptions({
+        highlight: function(code) {
+          return hljs.highlightAuto(code).value;
+        },
+        langPrefix: 'hljs language-',
+        breaks: true
+      });
+      await this.fetchNote()
+      this.updatePreview();
     }
   };
 </script>
   
 <style scoped>
+.note-title-bar {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.note-title-label {
+  margin-right: 10px;
+  font-weight: bold;
+  font-size: 25px;
+  white-space: nowrap;
+}
+
+.note-title-container {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.note-title-input {
+  flex: 1;
+  font-size: 24px;
+  font-weight: 600;
+  padding: 4px 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: white;
+}
+
+.save-btn {
+  padding: 8px 16px;
+  font-size: 16px;
+  font-weight: bold;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+.save-btn:hover {
+  background-color: #45a049;
+}
 </style>
