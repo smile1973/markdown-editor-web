@@ -1,7 +1,17 @@
 <template>
-  <div class="login-container">
-    <h2>登入</h2>
-    <form @submit.prevent="handleLogin">
+  <div class="register-container">
+    <h2>註冊</h2>
+    <form @submit.prevent="handleRegister">
+      <div class="form-group">
+        <label for="name">姓名</label>
+        <input
+          type="text"
+          id="name"
+          v-model="name"
+          placeholder="請輸入姓名"
+          required
+        />
+      </div>
       <div class="form-group">
         <label for="username">帳號</label>
         <input
@@ -22,10 +32,20 @@
           required
         />
       </div>
-      <button type="submit" class="btn-submit">登入</button>
+      <div class="form-group">
+        <label for="confirmPassword">確認密碼</label>
+        <input
+          type="password"
+          id="confirmPassword"
+          v-model="confirmPassword"
+          placeholder="請再次輸入密碼"
+          required
+        />
+      </div>
+      <button type="submit" class="btn-submit">註冊</button>
       <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
-      <div class="register-link">
-        還沒有帳號？<router-link to="/register">註冊新帳號</router-link>
+      <div class="login-link">
+        已有帳號？<router-link to="/login">前往登入</router-link>
       </div>
     </form>
   </div>
@@ -37,34 +57,40 @@ import axios from 'axios';
 export default {
   data() {
     return {
+      name: '',
       username: '',
       password: '',
+      confirmPassword: '',
       errorMessage: ''
     };
   },
   methods: {
-    handleLogin() {
-      axios.post('/api/login', {
+    handleRegister() {
+      // 檢查密碼是否一致
+      if (this.password !== this.confirmPassword) {
+        this.errorMessage = '兩次輸入的密碼不一致';
+        return;
+      }
+
+      axios.post('/api/register', {
+        name: this.name,
         username: this.username,
         password: this.password
       })
       .then(response => {
         console.log(response.data);
-        console.log(response.data.message);
-        const { id, name } = response.data.user;
-        localStorage.setItem('userId', id);
-        localStorage.setItem('userName', name);
-        this.$router.push({ name: 'user' });
+        alert('註冊成功！請登入');
+        this.$router.push({ name: 'login' });
       })
       .catch(error => {
         if (error.response) {
-          if (error.response.status === 401) {
-            alert('登入失敗：' + error.response.data.message);
+          if (error.response.status === 400) {
+            this.errorMessage = error.response.data.message;
           } else {
-            alert('伺服器錯誤，請稍後再試。');
+            this.errorMessage = '伺服器錯誤，請稍後再試。';
           }
         } else {
-          alert('請檢查網路連接，或稍後再試。');
+          this.errorMessage = '請檢查網路連接，或稍後再試。';
         }
       });
     }
@@ -73,7 +99,7 @@ export default {
 </script>
 
 <style scoped>
-.login-container {
+.register-container {
   max-width: 400px;
   margin: 0 auto;
   padding: 20px;
@@ -82,7 +108,8 @@ export default {
   background-color: #1e1e1e;
   color: #f0f0f0;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-  margin-top: 100px;
+  margin-top: 50px;
+  margin-bottom: 50px;
 }
 
 h2 {
@@ -137,18 +164,18 @@ button:hover {
   margin-top: 10px;
 }
 
-.register-link {
+.login-link {
   text-align: center;
   margin-top: 15px;
   color: #cccccc;
 }
 
-.register-link a {
+.login-link a {
   color: #3a8ee6;
   text-decoration: none;
 }
 
-.register-link a:hover {
+.login-link a:hover {
   text-decoration: underline;
 }
-</style>
+</style> 

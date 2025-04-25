@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const { Note } = require('./dataset/note_table');
@@ -16,6 +17,9 @@ const router = require('./dataset/router');
 app.use(cors());
 app.use(express.json());
 app.use('/api', router);
+
+// 靜態檔案服務，使上傳的圖片可訪問
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // 測試路由
 app.get('/', (req, res) => {

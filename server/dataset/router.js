@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { login } = require('./operates/authController');
+const { login, register } = require('./operates/authController');
 const { getUserNotes } = require('./operates/getUserNotes');
 const { getUserFolders } = require('./operates/getUserFolders');
 const { createFolder } = require('./operates/createFolder');
@@ -10,8 +10,10 @@ const { updateNote } = require('./operates/updateNote');
 const { renameFolder } = require('./operates/renameFolder');
 const { deleteNote } = require('./operates/deleteNote');
 const { deleteFolder } = require('./operates/deleteFolder');
+const { uploadImage } = require('./operates/uploadImage');
 
 router.post('/login', login);
+router.post('/register', register);
 router.post('/getUserNotes', getUserNotes);
 router.post('/getUserFolders', getUserFolders);
 router.post('/createFolder', createFolder);
@@ -21,5 +23,6 @@ router.post('/updateNote', updateNote);
 router.post('/renameFolder', renameFolder);
 router.post('/deleteNote', deleteNote);
 router.post('/deleteFolder', deleteFolder);
+router.post('/uploadImage', uploadImage);
 
 module.exports = router;

@@ -31,6 +31,7 @@
         v-model="markdownText"
         @input="updatePreview"
         @keydown="handleKeyDown"
+        @paste="handlePaste"
         ref="textarea"
       ></textarea>
     </div>
@@ -54,6 +55,7 @@
         markdownText: '',
         htmlOutput: '',
         noteId: localStorage.getItem('noteId'),
+        isUploadingImage: false,
       };
     },
     methods: {
@@ -411,6 +413,72 @@
         } catch (error) {
           console.error('取得筆記失敗：', error);
           alert('無法取得筆記');
+        }
+      },
+      // 處理圖片貼上事件
+      async handlePaste(event) {
+        const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+        
+        // 檢查剪貼簿中是否有圖片
+        let imageFile = null;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf('image') !== -1) {
+            imageFile = items[i].getAsFile();
+            break;
+          }
+        }
+        
+        // 如果沒有圖片則退出
+        if (!imageFile) return;
+        
+        // 防止預設貼上行為
+        event.preventDefault();
+        
+        // 顯示上傳中的提示
+        this.isUploadingImage = true;
+        const textarea = this.$refs.textarea;
+        const cursorPos = textarea.selectionStart;
+        const uploadingText = '![圖片上傳中...](uploading)';
+        
+        // 在游標位置插入臨時文字
+        this.markdownText = 
+          this.markdownText.substring(0, cursorPos) + 
+          uploadingText + 
+          this.markdownText.substring(cursorPos);
+        
+        // 創建FormData
+        const formData = new FormData();
+        formData.append('image', imageFile);
+        
+        try {
+          // 發送圖片到伺服器
+          const response = await axios.post(
+            'http://localhost:5000/api/uploadImage', 
+            formData, 
+            { headers: { 'Content-Type': 'multipart/form-data' } }
+          );
+          
+          // 上傳成功，獲取圖片路徑
+          if (response.data.success) {
+            const imageUrl = `http://localhost:5000${response.data.filePath}`;
+            const imageMarkdown = `![${imageFile.name}](${imageUrl})`;
+            
+            // 替換臨時文字為實際的圖片Markdown
+            this.markdownText = this.markdownText.replace(uploadingText, imageMarkdown);
+            this.updatePreview();
+          } else {
+            // 上傳失敗，移除臨時文字
+            this.markdownText = this.markdownText.replace(uploadingText, '');
+            console.error('圖片上傳失敗:', response.data.message);
+            alert(`圖片上傳失敗: ${response.data.message}`);
+          }
+        } catch (error) {
+          // 處理錯誤
+          this.markdownText = this.markdownText.replace(uploadingText, '');
+          console.error('圖片上傳出錯:', error);
+          alert('圖片上傳出錯，請重試');
+        } finally {
+          this.isUploadingImage = false;
         }
       },
     },
