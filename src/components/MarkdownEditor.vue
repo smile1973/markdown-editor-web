@@ -10,8 +10,20 @@
             v-model="noteTitle"
             placeholder="輸入筆記標題..."
             class="note-title-input"
+            @input="onTitleChange"
           />
-          <button @click="updateNote" class="save-btn">儲存</button> <!-- 儲存按鈕 -->
+          <div class="save-status-container">
+            <span v-if="autoSaveMode && isSaving" class="autosave-indicator">正在儲存...</span>
+            <span v-if="autoSaveMode && lastSaved" class="autosave-complete">最後儲存: {{ lastSaved }}</span>
+          </div>
+          <button v-if="!autoSaveMode" @click="updateNote" class="save-btn">儲存</button>
+          <div class="mode-switch">
+            <label class="switch">
+              <input type="checkbox" v-model="autoSaveMode">
+              <span class="slider round"></span>
+            </label>
+            <span class="mode-label">自動儲存</span>
+          </div>
         </div>
       </div>
       <div id="toolbar">
@@ -23,13 +35,13 @@
         <button id="task-list-btn" @click="insertListItem('- [ ] ')">工作清單</button>
         <button id="link-btn" @click="insertLink">[超連結](url)</button>
         <button id="hr-btn" @click="insertHorizontalRule">水平線</button>
-        <button id="login-btn" @click="goToLogin">登入</button> <!-- 新增登入按鈕 -->
+        <button id="login-btn" @click="goToLogin">登入</button>
       </div>
       <textarea
         id="markdown-input"
         placeholder="輸入 Markdown..."
         v-model="markdownText"
-        @input="updatePreview"
+        @input="onTextChange"
         @keydown="handleKeyDown"
         @paste="handlePaste"
         ref="textarea"
@@ -56,7 +68,22 @@
         htmlOutput: '',
         noteId: localStorage.getItem('noteId'),
         isUploadingImage: false,
+        autoSaveMode: false,
+        autoSaveTimeout: null,
+        lastSavedContent: '',
+        lastSavedTitle: '',
+        isSaving: false,
+        lastSaved: null,
       };
+    },
+    watch: {
+      autoSaveMode(newVal) {
+        localStorage.setItem('autoSaveMode', newVal ? 'true' : 'false');
+        if (newVal) {
+          // 切換到自動儲存模式時，立即保存當前內容
+          this.scheduleAutoSave(true);
+        }
+      }
     },
     methods: {
       updatePreview() {
@@ -67,6 +94,51 @@
             hljs.highlightElement(block);
           });
         });
+      },
+      onTextChange() {
+        this.updatePreview();
+        
+        // 自動儲存模式下，內容變更後立即觸發保存
+        if (this.autoSaveMode) {
+          this.scheduleAutoSave();
+        }
+      },
+      onTitleChange() {
+        // 自動儲存模式下，標題變更後立即觸發保存
+        if (this.autoSaveMode && this.noteTitle !== this.lastSavedTitle) {
+          this.scheduleAutoSave();
+        }
+      },
+      scheduleAutoSave(immediate = false) {
+        // 清除現有的定時器
+        if (this.autoSaveTimeout) {
+          clearTimeout(this.autoSaveTimeout);
+        }
+        
+        const saveFunc = async () => {
+          // 只有內容或標題變化時才保存
+          if (this.markdownText !== this.lastSavedContent || this.noteTitle !== this.lastSavedTitle) {
+            this.isSaving = true; // 顯示保存指示器
+            await this.updateNote(true);
+            this.lastSavedContent = this.markdownText;
+            this.lastSavedTitle = this.noteTitle;
+            this.isSaving = false; // 隱藏保存指示器
+            
+            // 更新最後保存時間
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const seconds = now.getSeconds().toString().padStart(2, '0');
+            this.lastSaved = `${hours}:${minutes}:${seconds}`;
+          }
+        };
+        
+        if (immediate) {
+          saveFunc();
+        } else {
+          // 延遲500毫秒後保存，減少過於頻繁的保存但仍保持快速反應
+          this.autoSaveTimeout = setTimeout(saveFunc, 500);
+        }
       },
       wrapTextWithMarkdown(syntax) {
         const textarea = this.$refs.textarea;
@@ -93,6 +165,11 @@
           textarea.focus();
           textarea.setSelectionRange(start + syntax.length, end + syntax.length);
           this.updatePreview(); // 更新預覽
+          
+          // 自動儲存模式下觸發保存
+          if (this.autoSaveMode) {
+            this.scheduleAutoSave();
+          }
         });
       },
       insertListItem(prefix) {
@@ -132,6 +209,11 @@
             textarea.setSelectionRange(start + prefix.length, start + prefix.length);
           }
           this.updatePreview(); // 更新預覽
+          
+          // 自動儲存模式下觸發保存
+          if (this.autoSaveMode) {
+            this.scheduleAutoSave();
+          }
         });
       },
       insertLink() {
@@ -156,12 +238,16 @@
         
         // 將游標放在URL部分，方便用戶修改
         const urlStart = start + insertText.indexOf('http://');
-        // const urlEnd = start + insertText.indexOf(')');
         
         this.$nextTick(() => {
           textarea.focus();
           textarea.setSelectionRange(urlStart, urlStart + 10); // 選中"http://url"
           this.updatePreview(); // 更新預覽
+          
+          // 自動儲存模式下觸發保存
+          if (this.autoSaveMode) {
+            this.scheduleAutoSave();
+          }
         });
       },
       insertHorizontalRule() {
@@ -185,6 +271,11 @@
           textarea.focus();
           textarea.setSelectionRange(newPosition, newPosition);
           this.updatePreview(); // 更新預覽
+          
+          // 自動儲存模式下觸發保存
+          if (this.autoSaveMode) {
+            this.scheduleAutoSave();
+          }
         });
       },
       handleKeyDown(event) {
@@ -388,6 +479,13 @@
             });
           }
         }
+        
+        // 新增在各種鍵盤處理後的自動保存
+        this.$nextTick(() => {
+          if (this.autoSaveMode) {
+            this.scheduleAutoSave();
+          }
+        });
       },
       goToLogin() {
         this.$router.push('/login');  // 導向登入頁面
@@ -397,6 +495,7 @@
           const response = await axios.post('/api/getNote', { noteId: this.noteId});
           const note = response.data.note[0];
           this.noteTitle = note.name || '';
+          this.lastSavedTitle = this.noteTitle; // 記錄初始標題
           if (note && note.content != null) {
             this.markdownText = note.content;
           }
@@ -405,14 +504,23 @@
           alert('無法取得筆記');
         }
       },
-      async updateNote() {
+      async updateNote(silent = false) {
         try {
-          const response = await axios.post('/api/updateNote', { noteId: this.noteId, name: this.noteTitle, content: this.markdownText});
-          console.log(response.data.node);
-          alert('儲存成功');
+          const response = await axios.post('/api/updateNote', { 
+            noteId: this.noteId, 
+            name: this.noteTitle, 
+            content: this.markdownText
+          });
+          
+          if (!silent) {
+            console.log(response.data.node);
+            alert('儲存成功');
+          }
         } catch (error) {
-          console.error('取得筆記失敗：', error);
-          alert('無法取得筆記');
+          console.error('儲存筆記失敗：', error);
+          if (!silent) {
+            alert('無法儲存筆記');
+          }
         }
       },
       // 處理圖片貼上事件
@@ -466,6 +574,11 @@
             // 替換臨時文字為實際的圖片Markdown
             this.markdownText = this.markdownText.replace(uploadingText, imageMarkdown);
             this.updatePreview();
+            
+            // 自動儲存模式下觸發保存
+            if (this.autoSaveMode) {
+              this.scheduleAutoSave();
+            }
           } else {
             // 上傳失敗，移除臨時文字
             this.markdownText = this.markdownText.replace(uploadingText, '');
@@ -490,7 +603,15 @@
         langPrefix: 'hljs language-',
         breaks: true
       });
-      await this.fetchNote()
+      
+      // 從本地存儲中恢復自動儲存模式設置
+      const savedMode = localStorage.getItem('autoSaveMode');
+      if (savedMode === 'true') {
+        this.autoSaveMode = true;
+      }
+      
+      await this.fetchNote();
+      this.lastSavedContent = this.markdownText; // 記錄初始內容
       this.updatePreview();
     }
   };
@@ -527,6 +648,14 @@
   color: white;
 }
 
+.save-status-container {
+  display: flex;
+  align-items: center;
+  min-width: 160px;
+  justify-content: flex-end;
+  margin-right: 10px;
+}
+
 .save-btn {
   padding: 8px 16px;
   font-size: 16px;
@@ -536,10 +665,99 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  margin-left: 10px;
+  min-width: 80px;
 }
 
 .save-btn:hover {
   background-color: #45a049;
+}
+
+/* 自動儲存指示器樣式 */
+@keyframes autosave-pulse {
+  0% { opacity: 0.4; }
+  50% { opacity: 1; }
+  100% { opacity: 0.4; }
+}
+
+.autosave-indicator {
+  font-size: 12px;
+  color: #888;
+  animation: autosave-pulse 2s infinite;
+  white-space: nowrap;
+}
+
+.autosave-complete {
+  font-size: 12px;
+  color: #6c6;
+  white-space: nowrap;
+}
+
+/* 開關按鈕樣式 */
+.mode-switch {
+  display: flex;
+  align-items: center;
+  margin-left: 15px;
+}
+
+.mode-label {
+  margin-left: 8px;
+  font-size: 14px;
+  color: #ddd;
+}
+
+/* 開關樣式 */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: #2196F3;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #2196F3;
+}
+
+input:checked + .slider:before {
+  transform: translateX(20px);
+}
+
+.slider.round {
+  border-radius: 34px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
 }
 </style>
