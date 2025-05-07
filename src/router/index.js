@@ -7,11 +7,6 @@ import UserPage from '../components/UserPage.vue'
 const routes = [
   {
     path: '/',
-    name: 'home',
-    component: HomeView
-  },
-  {
-    path: '/login',
     name: 'login',
     component: Login
   },
@@ -23,13 +18,31 @@ const routes = [
   {
     path: '/user',
     name: 'user',
-    component: UserPage
+    component: UserPage,
+    meta: { requiresAuth: true }
   },
+  {
+    path: '/editor',
+    name: 'editor',
+    component: HomeView,
+    meta: { requiresAuth: true }
+  }
 ]
 
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes
+})
+
+// 添加路由守衛
+router.beforeEach((to, from, next) => {
+  const isAuthenticated = localStorage.getItem('userId')
+  
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    next('/')
+  } else {
+    next()
+  }
 })
 
 export default router

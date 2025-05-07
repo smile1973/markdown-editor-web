@@ -18,7 +18,8 @@
     "vue": "^3.2.13",
     "vue-codemirror": "^6.1.1",
     "vue-router": "^4.0.3",
-    "vuex": "^4.0.0"
+    "vuex": "^4.0.0",
+    "element-plus": "^2.3.14"
   },
   "devDependencies": {
     "@babel/core": "^7.12.16",

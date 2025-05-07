@@ -1,5 +1,10 @@
 <template>
   <div class="container">
+    <!-- 登出按鈕 -->
+    <div class="logout-container">
+      <button @click="handleLogout" class="logout-button">登出</button>
+    </div>
+    
     <!-- Sidebar -->
     <div class="sidebar">
       <!-- Sidebar Header -->
@@ -167,6 +172,11 @@ export default {
     };
   },
   methods: {
+    handleLogout() {
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userName');
+      this.$router.push('/');
+    },
     async addFolderButtonHandle() {
       const folderName = prompt('請輸入資料夾名稱：');
       this.addFolder(folderName);
@@ -259,7 +269,7 @@ export default {
             console.log('新筆記建立成功');
             const noteId = response.data.note._id;
             localStorage.setItem('noteId', noteId);
-            this.$router.push({ name: 'home' });
+            this.$router.push({ name: 'editor' });
         } catch (error) {
             console.error('建立資料夾失敗:', error);
             alert('無法建立資料夾');
@@ -287,7 +297,7 @@ export default {
     navigateToNote(noteId) {  
       localStorage.setItem('noteId', noteId);
       console.log(`Navigating to note with ID: ${noteId}`);
-      this.$router.push({ name: 'home' });
+      this.$router.push({ name: 'editor' });
     },
     async setCurrentFolder() {
       this.currentFolder = null
@@ -642,5 +652,26 @@ export default {
 .more-dots {
   cursor: pointer;
   margin-left: 5px;
+}
+
+.logout-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.logout-button {
+  padding: 8px 16px;
+  background-color: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.logout-button:hover {
+  background-color: #cc0000;
 }
 </style>
