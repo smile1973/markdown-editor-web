@@ -1,8 +1,33 @@
 <template>
   <div class="home">
     <div class="header">
-      <button @click="goToUserPage" class="home-button">返回首頁</button>
+      <div class="left-controls">
+        <button @click="goToUserPage" class="home-button">返回首頁</button>
+        
+        <!-- 添加模式切換按鈕 -->
+        <div class="mode-switcher">
+          <el-button-group>
+            <el-button 
+              :type="editorMode==='edit'?'primary':'default'" 
+              icon="el-icon-edit" 
+              @click="setMode('edit')" 
+              size="large">編輯</el-button>
+            <el-button 
+              :type="editorMode==='split'?'primary':'default'" 
+              icon="el-icon-more" 
+              @click="setMode('split')" 
+              size="large">分割</el-button>
+            <el-button 
+              :type="editorMode==='preview'?'primary':'default'" 
+              icon="el-icon-view" 
+              @click="setMode('preview')" 
+              size="large">預覽</el-button>
+          </el-button-group>
+        </div>
+      </div>
+      
       <h1>{{ noteTitle }}</h1>
+      
       <div class="save-controls">
         <div class="save-status-container">
           <span v-if="autoSaveMode && isSaving" class="autosave-indicator">正在儲存...</span>
@@ -18,9 +43,12 @@
         </div>
       </div>
     </div>
+    
     <MarkdownEditor 
       ref="markdownEditor"
       :auto-save-mode="autoSaveMode"
+      :mode="editorMode"
+      @mode-change="handleModeChange"
       @title-change="updateNoteTitle"
       @save-status-change="updateSaveStatus"
     />
@@ -29,18 +57,22 @@
 
 <script>
 import MarkdownEditor from '@/components/MarkdownEditor.vue';
+import { ElButton, ElButtonGroup } from 'element-plus';
 
 export default {
   name: 'HomeView',
   components: {
-    MarkdownEditor
+    MarkdownEditor,
+    ElButton,
+    ElButtonGroup
   },
   data() {
     return {
       noteTitle: '',
       autoSaveMode: false,
       isSaving: false,
-      lastSaved: null
+      lastSaved: null,
+      editorMode: 'split' // 默認為分割模式
     }
   },
   methods: {
@@ -56,6 +88,12 @@ export default {
     },
     saveNote() {
       this.$refs.markdownEditor.updateNote();
+    },
+    setMode(mode) {
+      this.editorMode = mode;
+    },
+    handleModeChange(mode) {
+      this.editorMode = mode;
     }
   },
   mounted() {
@@ -82,18 +120,23 @@ export default {
   align-items: center;
   padding: 20px;
   position: relative;
+  justify-content: space-between;
+}
+
+.left-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
 .home-button {
-  position: absolute;
-  left: 20px;
-  padding: 8px 16px;
+  padding: 10px 18px;
   background-color: #4CAF50;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 16px;
   transition: background-color 0.3s;
 }
 
@@ -101,16 +144,24 @@ export default {
   background-color: #45a049;
 }
 
+.mode-switcher {
+  display: flex;
+  align-items: center;
+}
+
+.mode-switcher .el-button-group .el-button {
+  padding: 10px 18px;
+  font-size: 16px;
+}
+
 .home h1 {
   text-align: center;
   margin: 0;
-  width: 100%;
+  flex: 1;
   font-size: 24px;
 }
 
 .save-controls {
-  position: absolute;
-  right: 20px;
   display: flex;
   align-items: center;
   gap: 15px;

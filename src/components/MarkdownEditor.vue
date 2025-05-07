@@ -1,15 +1,7 @@
 <template>
   <div id="container" :style="containerStyle">
-    <!-- 模式切換按鈕列 -->
-    <div id="mode-switcher">
-      <el-button-group>
-        <el-button :type="mode==='edit'?'primary':'default'" icon="el-icon-edit" @click="setMode('edit')" circle></el-button>
-        <el-button :type="mode==='split'?'primary':'default'" icon="el-icon-more" @click="setMode('split')" circle></el-button>
-        <el-button :type="mode==='preview'?'primary':'default'" icon="el-icon-view" @click="setMode('preview')" circle></el-button>
-      </el-button-group>
-    </div>
     <!-- 編輯+預覽模式 -->
-    <template v-if="mode==='split'">
+    <template v-if="localMode==='split'">
       <div id="editor" :style="{flex: splitPos}">
         <div id="toolbar">
           <button id="bold-btn" @click="wrapTextWithMarkdown('**')">**粗體**</button>
@@ -38,7 +30,7 @@
       </div>
     </template>
     <!-- 僅編輯模式 -->
-    <template v-else-if="mode==='edit'">
+    <template v-else-if="localMode==='edit'">
       <div id="editor" style="flex:1;">
         <div id="toolbar">
           <button id="bold-btn" @click="wrapTextWithMarkdown('**')">**粗體**</button>
@@ -74,16 +66,17 @@
   import { marked } from 'marked';
   import hljs from 'highlight.js';
   import axios from 'axios';
-  import { ElButton, ElButtonGroup } from 'element-plus';
-  import '@/assets/styles/markdown.css';
   
   export default {
     name: 'MarkdownEditor',
-    components: { ElButton, ElButtonGroup },
     props: {
       autoSaveMode: {
         type: Boolean,
         default: false
+      },
+      mode: {
+        type: String,
+        default: 'split'
       }
     },
     data() {
@@ -99,7 +92,7 @@
         isSaving: false,
         lastSaved: null,
         localAutoSaveMode: false,
-        mode: 'split', // 'edit' | 'split' | 'preview'
+        localMode: this.mode, // 使用從父組件傳來的模式
         splitPos: 0.5, // 0~1，分隔線位置
         dragging: false,
       };
@@ -123,6 +116,12 @@
           if (newVal) {
             this.scheduleAutoSave(true);
           }
+        }
+      },
+      mode: {
+        immediate: true,
+        handler(newVal) {
+          this.localMode = newVal;
         }
       }
     },
@@ -578,9 +577,6 @@
           this.isUploadingImage = false;
         }
       },
-      setMode(m) {
-        this.mode = m;
-      },
       startDrag() {
         this.dragging = true;
         document.body.style.cursor = 'col-resize';
@@ -596,12 +592,14 @@
         this.splitPos = percent;
         // 拖到最左/最右自動切換模式
         if (percent < 0.05) {
-          this.mode = 'preview';
+          this.localMode = 'preview';
           this.splitPos = 0.5;
+          this.$emit('mode-change', 'preview');
           this.stopDrag();
         } else if (percent > 0.95) {
-          this.mode = 'edit';
+          this.localMode = 'edit';
           this.splitPos = 0.5;
+          this.$emit('mode-change', 'edit');
           this.stopDrag();
         }
       },
@@ -629,12 +627,6 @@
 </script>
   
 <style scoped>
-#mode-switcher {
-  position: absolute;
-  top: 30px;
-  right: 60px;
-  z-index: 10;
-}
 #split-bar {
   width: 6px;
   cursor: col-resize;
