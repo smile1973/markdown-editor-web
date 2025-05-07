@@ -8,17 +8,17 @@
         <div class="mode-switcher">
           <el-button-group>
             <el-button 
-              :type="editorMode==='edit'?'primary':'default'" 
+              :class="['mode-button', editorMode==='edit' ? 'mode-active' : '']" 
               icon="el-icon-edit" 
               @click="setMode('edit')" 
               size="large">編輯</el-button>
             <el-button 
-              :type="editorMode==='split'?'primary':'default'" 
+              :class="['mode-button', editorMode==='split' ? 'mode-active' : '']" 
               icon="el-icon-more" 
               @click="setMode('split')" 
               size="large">分割</el-button>
             <el-button 
-              :type="editorMode==='preview'?'primary':'default'" 
+              :class="['mode-button', editorMode==='preview' ? 'mode-active' : '']" 
               icon="el-icon-view" 
               @click="setMode('preview')" 
               size="large">預覽</el-button>
@@ -276,5 +276,30 @@ input:checked + .slider:before {
 
 .slider.round:before {
   border-radius: 50%;
+}
+
+/* 模式切換按鈕樣式 */
+.mode-button {
+  background-color: #f5f5f5;
+  color: #333;
+  border: 1px solid #ddd;
+  transition: all 0.3s ease;
+}
+
+.mode-button:hover {
+  background-color: #e6e6e6;
+  border-color: #ccc;
+}
+
+.mode-active {
+  background-color: #222;
+  color: white;
+  border: 1px solid #111;
+}
+
+.mode-active:hover {
+  background-color: #333;
+  color: white;
+  border-color: #222;
 }
 </style>
