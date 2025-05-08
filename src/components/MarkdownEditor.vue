@@ -4,24 +4,9 @@
     <template v-if="localMode==='split'">
       <div id="editor" :style="{flex: splitPos}">
         <div id="toolbar">
-          <button id="bold-btn" @click="wrapTextWithMarkdown('**')">**粗體**</button>
-          <button id="italic-btn" @click="wrapTextWithMarkdown('*')">*斜體*</button>
-          <button id="code-btn" @click="wrapTextWithMarkdown('```')">```程式碼```</button>
-          <button id="unordered-list-btn" @click="insertListItem('- ')">無序清單</button>
-          <button id="ordered-list-btn" @click="insertListItem('1. ')">有序清單</button>
-          <button id="task-list-btn" @click="insertListItem('- [ ] ')">工作清單</button>
-          <button id="link-btn" @click="insertLink">[超連結](url)</button>
           <button id="hr-btn" @click="insertHorizontalRule">水平線</button>
         </div>
-        <textarea
-          id="markdown-input"
-          placeholder="輸入 Markdown..."
-          v-model="markdownText"
-          @input="onTextChange"
-          @keydown="handleKeyDown"
-          @paste="handlePaste"
-          ref="textarea"
-        ></textarea>
+        <div ref="editorRef"></div>
       </div>
       <!-- 分隔線 -->
       <div id="split-bar" @mousedown="startDrag"></div>
@@ -33,24 +18,9 @@
     <template v-else-if="localMode==='edit'">
       <div id="editor" style="flex:1;">
         <div id="toolbar">
-          <button id="bold-btn" @click="wrapTextWithMarkdown('**')">**粗體**</button>
-          <button id="italic-btn" @click="wrapTextWithMarkdown('*')">*斜體*</button>
-          <button id="code-btn" @click="wrapTextWithMarkdown('```')">```程式碼```</button>
-          <button id="unordered-list-btn" @click="insertListItem('- ')">無序清單</button>
-          <button id="ordered-list-btn" @click="insertListItem('1. ')">有序清單</button>
-          <button id="task-list-btn" @click="insertListItem('- [ ] ')">工作清單</button>
-          <button id="link-btn" @click="insertLink">[超連結](url)</button>
           <button id="hr-btn" @click="insertHorizontalRule">水平線</button>
         </div>
-        <textarea
-          id="markdown-input"
-          placeholder="輸入 Markdown..."
-          v-model="markdownText"
-          @input="onTextChange"
-          @keydown="handleKeyDown"
-          @paste="handlePaste"
-          ref="textarea"
-        ></textarea>
+        <div ref="editorRef"></div>
       </div>
     </template>
     <!-- 僅預覽模式 -->
@@ -66,6 +36,14 @@
   import { marked } from 'marked';
   import hljs from 'highlight.js';
   import axios from 'axios';
+  import { EditorView} from 'codemirror';
+  import { EditorState } from '@codemirror/state';
+  import { markdown } from '@codemirror/lang-markdown';
+  import { oneDark } from '@codemirror/theme-one-dark';
+  import { keymap } from '@codemirror/view';
+  import { defaultKeymap, indentWithTab } from '@codemirror/commands';
+  import { lineNumbers } from '@codemirror/view';
+  import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
   
   export default {
     name: 'MarkdownEditor',
@@ -92,9 +70,10 @@
         isSaving: false,
         lastSaved: null,
         localAutoSaveMode: false,
-        localMode: this.mode, // 使用從父組件傳來的模式
-        splitPos: 0.5, // 0~1，分隔線位置
+        localMode: this.mode,
+        splitPos: 0.5,
         dragging: false,
+        editor: null,
       };
     },
     computed: {
@@ -122,10 +101,52 @@
         immediate: true,
         handler(newVal) {
           this.localMode = newVal;
+          this.$nextTick(() => {
+            if (newVal === 'edit' || newVal === 'split') {
+              this.initEditor();
+            } else {
+              this.destroyEditor();
+            }
+          });
         }
       }
     },
     methods: {
+      destroyEditor() {
+        if (this.editor) {
+          this.editor.destroy();
+          this.editor = null;
+        }
+      },
+      
+      initEditor() {
+        this.destroyEditor();
+        
+        const startState = EditorState.create({
+          doc: this.markdownText,
+          extensions: [
+            lineNumbers(),
+            syntaxHighlighting(defaultHighlightStyle),
+            markdown(),
+            oneDark,
+            keymap.of([
+              ...defaultKeymap,
+              indentWithTab
+            ]),
+            EditorView.updateListener.of(update => {
+              if (update.docChanged) {
+                this.markdownText = update.state.doc.toString();
+                this.onTextChange();
+              }
+            })
+          ]
+        });
+
+        this.editor = new EditorView({
+          state: startState,
+          parent: this.$refs.editorRef
+        });
+      },
       updatePreview() {
         this.htmlOutput = marked.parse(this.markdownText);
         this.$nextTick(() => {
@@ -148,10 +169,11 @@
         }
         
         const saveFunc = async () => {
-          if (this.markdownText !== this.lastSavedContent || this.noteTitle !== this.lastSavedTitle) {
+          const currentContent = this.editor ? this.editor.state.doc.toString() : this.markdownText;
+          if (currentContent !== this.lastSavedContent || this.noteTitle !== this.lastSavedTitle) {
             this.isSaving = true;
             await this.updateNote(true);
-            this.lastSavedContent = this.markdownText;
+            this.lastSavedContent = currentContent;
             this.lastSavedTitle = this.noteTitle;
             this.isSaving = false;
             
@@ -169,309 +191,30 @@
           this.autoSaveTimeout = setTimeout(saveFunc, 500);
         }
       },
-      wrapTextWithMarkdown(syntax) {
-        const textarea = this.$refs.textarea;
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const selectedText = textarea.value.substring(start, end);
-  
-        if (selectedText) {
-          this.markdownText = 
-            textarea.value.substring(0, start) + 
-            syntax + selectedText + syntax + 
-            textarea.value.substring(end);
-        } else {
-          this.markdownText = 
-            textarea.value.substring(0, start) + 
-            syntax + syntax + 
-            textarea.value.substring(end);
-        }
-        
-        this.$nextTick(() => {
-          textarea.focus();
-          textarea.setSelectionRange(start + syntax.length, end + syntax.length);
-          this.updatePreview();
-          
-          if (this.localAutoSaveMode) {
-            this.scheduleAutoSave();
-          }
-        });
-      },
-      insertListItem(prefix) {
-        const textarea = this.$refs.textarea;
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const selectedText = textarea.value.substring(start, end);
-        
-        if (selectedText) {
-          const lines = selectedText.split('\n');
-          const formattedText = lines.map(line => prefix + line).join('\n');
-          
-          this.markdownText = 
-            textarea.value.substring(0, start) + 
-            formattedText + 
-            textarea.value.substring(end);
-        } else {
-          this.markdownText = 
-            textarea.value.substring(0, start) + 
-            prefix + 
-            textarea.value.substring(end);
-        }
-        
-        this.$nextTick(() => {
-          textarea.focus();
-          if (selectedText) {
-            textarea.setSelectionRange(
-              start + this.markdownText.substring(start, this.markdownText.length - textarea.value.substring(end).length).length, 
-              start + this.markdownText.substring(start, this.markdownText.length - textarea.value.substring(end).length).length
-            );
-          } else {
-            textarea.setSelectionRange(start + prefix.length, start + prefix.length);
-          }
-          this.updatePreview();
-          
-          if (this.localAutoSaveMode) {
-            this.scheduleAutoSave();
-          }
-        });
-      },
-      insertLink() {
-        const textarea = this.$refs.textarea;
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const selectedText = textarea.value.substring(start, end);
-        
-        let insertText = '';
-        if (selectedText) {
-          insertText = `[${selectedText}](http://url)`;
-        } else {
-          insertText = '[連結文字](http://url)';
-        }
-        
-        this.markdownText = 
-          textarea.value.substring(0, start) + 
-          insertText + 
-          textarea.value.substring(end);
-        
-        const urlStart = start + insertText.indexOf('http://');
-        
-        this.$nextTick(() => {
-          textarea.focus();
-          textarea.setSelectionRange(urlStart, urlStart + 10);
-          this.updatePreview();
-          
-          if (this.localAutoSaveMode) {
-            this.scheduleAutoSave();
-          }
-        });
-      },
       insertHorizontalRule() {
-        const textarea = this.$refs.textarea;
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
+        if (!this.editor) return;
         
-        const newLine = (start > 0 && textarea.value.charAt(start - 1) !== '\n') ? '\n' : '';
-        const endNewLine = (end < textarea.value.length && textarea.value.charAt(end) !== '\n') ? '\n' : '';
+        const state = this.editor.state;
+        const selection = state.selection;
+        const line = state.doc.lineAt(selection.main.from);
+        const pos = line.from;
         
-        this.markdownText = 
-          textarea.value.substring(0, start) + 
-          newLine + '---' + endNewLine + 
-          textarea.value.substring(end);
+        // 在當前行前後添加換行符
+        const newText = '\n---\n';
         
-        const newPosition = start + newLine.length + 3 + endNewLine.length;
-        
-        this.$nextTick(() => {
-          textarea.focus();
-          textarea.setSelectionRange(newPosition, newPosition);
-          this.updatePreview();
-          
-          if (this.localAutoSaveMode) {
-            this.scheduleAutoSave();
+        this.editor.dispatch({
+          changes: {
+            from: pos,
+            insert: newText
+          },
+          selection: {
+            anchor: pos + newText.length
           }
         });
-      },
-      handleKeyDown(event) {
-        if (event.key === 'Enter') {
-          const textarea = this.$refs.textarea;
-          const start = textarea.selectionStart;
-          const end = textarea.selectionEnd;
-          const text = this.markdownText;
-          
-          let lineStart = start;
-          while (lineStart > 0 && text.charAt(lineStart - 1) !== '\n') {
-            lineStart--;
-          }
-          
-          const currentLine = text.substring(lineStart, start);
-          
-          const orderedListMatch = currentLine.match(/^(\s*)(\d+)\.\s(.*)/);
-          if (orderedListMatch) {
-            if (!orderedListMatch[3]) {
-              event.preventDefault();
-              this.markdownText = text.substring(0, lineStart) + text.substring(start);
-              this.$nextTick(() => {
-                textarea.focus();
-                textarea.setSelectionRange(lineStart, lineStart);
-                this.updatePreview();
-              });
-              return;
-            }
-            
-            const indent = orderedListMatch[1];
-            const currentNumber = parseInt(orderedListMatch[2]);
-            const nextNumber = currentNumber + 1;
-            const nextPrefix = `${indent}${nextNumber}. `;
-            
-            event.preventDefault();
-            this.markdownText = text.substring(0, start) + '\n' + nextPrefix + text.substring(end);
-            
-            this.$nextTick(() => {
-              textarea.focus();
-              const newCursorPos = start + 1 + nextPrefix.length;
-              textarea.setSelectionRange(newCursorPos, newCursorPos);
-              this.updatePreview();
-            });
-            return;
-          }
-          
-          const taskListMatch = currentLine.match(/^(\s*)-\s\[\s\]\s(.*)/);
-          if (taskListMatch) {
-            if (!taskListMatch[2]) {
-              event.preventDefault();
-              this.markdownText = text.substring(0, lineStart) + text.substring(start);
-              this.$nextTick(() => {
-                textarea.focus();
-                textarea.setSelectionRange(lineStart, lineStart);
-                this.updatePreview();
-              });
-              return;
-            }
-            
-            const indent = taskListMatch[1];
-            
-            event.preventDefault();
-            this.markdownText = text.substring(0, start) + '\n' + indent + '- [ ] ' + text.substring(end);
-            
-            this.$nextTick(() => {
-              textarea.focus();
-              const newCursorPos = start + 1 + indent.length + 6;
-              textarea.setSelectionRange(newCursorPos, newCursorPos);
-              this.updatePreview();
-            });
-            return;
-          }
-          
-          const unorderedListMatch = currentLine.match(/^(\s*)-\s([^[\s].*)?/);
-          if (unorderedListMatch) {
-            if (!unorderedListMatch[2]) {
-              event.preventDefault();
-              this.markdownText = text.substring(0, lineStart) + text.substring(start);
-              this.$nextTick(() => {
-                textarea.focus();
-                textarea.setSelectionRange(lineStart, lineStart);
-                this.updatePreview();
-              });
-              return;
-            }
-            
-            const indent = unorderedListMatch[1];
-            
-            event.preventDefault();
-            this.markdownText = text.substring(0, start) + '\n' + indent + '- ' + text.substring(end);
-            
-            this.$nextTick(() => {
-              textarea.focus();
-              const newCursorPos = start + 1 + indent.length + 2;
-              textarea.setSelectionRange(newCursorPos, newCursorPos);
-              this.updatePreview();
-            });
-            return;
-          }
-        }
         
-        if (event.key === 'Tab') {
-          event.preventDefault();
-          
-          const textarea = this.$refs.textarea;
-          const start = textarea.selectionStart;
-          const end = textarea.selectionEnd;
-          const text = this.markdownText;
-          
-          let lineStart = start;
-          while (lineStart > 0 && text.charAt(lineStart - 1) !== '\n') {
-            lineStart--;
-          }
-          
-          const currentLine = text.substring(lineStart, start);
-          
-          const orderedListMatch = currentLine.match(/^(\s*)(\d+)\.\s(.*)/);
-          const unorderedListMatch = currentLine.match(/^(\s*)-\s([^[\s].*)?/);
-          const taskListMatch = currentLine.match(/^(\s*)-\s\[\s\]\s(.*)/);
-          
-          if (orderedListMatch) {
-            const indent = orderedListMatch[1];
-            const content = orderedListMatch[3] || ' ';
-            
-            this.markdownText = 
-              text.substring(0, lineStart) + 
-              indent + '    ' + '1. ' + content + 
-              text.substring(start + currentLine.length);
-            
-            this.$nextTick(() => {
-              textarea.focus();
-              const newCursorPos = lineStart + indent.length + 6 + content.length;
-              textarea.setSelectionRange(newCursorPos, newCursorPos);
-              this.updatePreview();
-            });
-          } else if (taskListMatch) {
-            const indent = taskListMatch[1];
-            const content = taskListMatch[2] || '';
-            
-            this.markdownText = 
-              text.substring(0, lineStart) + 
-              indent + '    ' + '- [ ] ' + content + 
-              text.substring(start + currentLine.length);
-            
-            this.$nextTick(() => {
-              textarea.focus();
-              const newCursorPos = lineStart + indent.length + 10 + content.length;
-              textarea.setSelectionRange(newCursorPos, newCursorPos);
-              this.updatePreview();
-            });
-          } else if (unorderedListMatch) {
-            const indent = unorderedListMatch[1];
-            const content = unorderedListMatch[2] || '';
-            
-            this.markdownText = 
-              text.substring(0, lineStart) + 
-              indent + '    ' + '- ' + content + 
-              text.substring(start + currentLine.length);
-            
-            this.$nextTick(() => {
-              textarea.focus();
-              const newCursorPos = lineStart + indent.length + 6 + content.length;
-              textarea.setSelectionRange(newCursorPos, newCursorPos);
-              this.updatePreview();
-            });
-          } else {
-            this.markdownText = 
-              text.substring(0, start) + 
-              '    ' + 
-              text.substring(end);
-            
-            this.$nextTick(() => {
-              textarea.focus();
-              textarea.setSelectionRange(start + 4, start + 4);
-              this.updatePreview();
-            });
-          }
+        if (this.localAutoSaveMode) {
+          this.scheduleAutoSave();
         }
-        
-        this.$nextTick(() => {
-          if (this.localAutoSaveMode) {
-            this.scheduleAutoSave();
-          }
-        });
       },
       async fetchNote() {
         try {
@@ -482,6 +225,11 @@
           this.$emit('title-change', this.noteTitle);
           if (note && note.content != null) {
             this.markdownText = note.content;
+            if (this.editor) {
+              this.editor.dispatch({
+                changes: { from: 0, to: this.editor.state.doc.length, insert: note.content }
+              });
+            }
           }
         } catch (error) {
           console.error('取得筆記失敗：', error);
@@ -493,10 +241,12 @@
           this.isSaving = true;
           this.$emit('save-status-change', { isSaving: true, lastSaved: this.lastSaved });
           
+          const content = this.editor ? this.editor.state.doc.toString() : this.markdownText;
+          
           const response = await axios.post('/api/updateNote', { 
             noteId: this.noteId, 
             name: this.noteTitle, 
-            content: this.markdownText
+            content: content
           });
           
           if (!silent) {
@@ -535,14 +285,13 @@
         event.preventDefault();
         
         this.isUploadingImage = true;
-        const textarea = this.$refs.textarea;
-        const cursorPos = textarea.selectionStart;
+        const { state } = this.editor;
+        const { from } = state.selection;
         const uploadingText = '![圖片上傳中...](uploading)';
         
-        this.markdownText = 
-          this.markdownText.substring(0, cursorPos) + 
-          uploadingText + 
-          this.markdownText.substring(cursorPos);
+        this.editor.dispatch({
+          changes: { from, insert: uploadingText }
+        });
         
         const formData = new FormData();
         formData.append('image', imageFile);
@@ -558,19 +307,37 @@
             const imageUrl = `http://localhost:5000${response.data.filePath}`;
             const imageMarkdown = `![${imageFile.name}](${imageUrl})`;
             
-            this.markdownText = this.markdownText.replace(uploadingText, imageMarkdown);
+            const doc = this.editor.state.doc.toString();
+            const newDoc = doc.replace(uploadingText, imageMarkdown);
+            
+            this.editor.dispatch({
+              changes: { from: 0, to: doc.length, insert: newDoc }
+            });
+            
             this.updatePreview();
             
             if (this.localAutoSaveMode) {
               this.scheduleAutoSave();
             }
           } else {
-            this.markdownText = this.markdownText.replace(uploadingText, '');
+            const doc = this.editor.state.doc.toString();
+            const newDoc = doc.replace(uploadingText, '');
+            
+            this.editor.dispatch({
+              changes: { from: 0, to: doc.length, insert: newDoc }
+            });
+            
             console.error('圖片上傳失敗:', response.data.message);
             alert(`圖片上傳失敗: ${response.data.message}`);
           }
         } catch (error) {
-          this.markdownText = this.markdownText.replace(uploadingText, '');
+          const doc = this.editor.state.doc.toString();
+          const newDoc = doc.replace(uploadingText, '');
+          
+          this.editor.dispatch({
+            changes: { from: 0, to: doc.length, insert: newDoc }
+          });
+          
           console.error('圖片上傳出錯:', error);
           alert('圖片上傳出錯，請重試');
         } finally {
@@ -611,6 +378,7 @@
       },
     },
     async mounted() {
+      this.initEditor();
       marked.setOptions({
         highlight: function(code) {
           return hljs.highlightAuto(code).value;
@@ -748,5 +516,22 @@
 
 #markdown-output hr {
   border-color: #3d3d3d;
+}
+
+.cm-editor {
+  flex: 1;
+  height: calc(100% - 50px);
+  overflow: auto;
+}
+
+.cm-editor .cm-content {
+  font-family: monospace;
+  font-size: 16px;
+  line-height: 1.5;
+  padding: 20px;
+}
+
+.cm-editor .cm-line {
+  padding: 0 4px;
 }
 </style>
