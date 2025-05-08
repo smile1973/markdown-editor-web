@@ -16,6 +16,8 @@
         <div ref="editorRef"></div>
         <div id="status-bar">
           <span>行: {{ cursorLine }}, 欄: {{ cursorColumn }}</span>
+          <span class="spacer"></span>
+          <button class="tab-toggle-btn" @click="toggleTabSize">Tab格數: {{ tabSize }}</button>
         </div>
       </div>
       <!-- 分隔線 -->
@@ -64,8 +66,9 @@
   import { defaultKeymap, indentWithTab } from '@codemirror/commands';
   import { lineNumbers } from '@codemirror/view';
   import { foldGutter} from '@codemirror/language';
-  import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
+  import { syntaxHighlighting, HighlightStyle, indentUnit } from '@codemirror/language';
   import { tags } from '@lezer/highlight';
+  import { Compartment } from '@codemirror/state';
   const customMarkdownHighlight = HighlightStyle.define([
     // 標題
     { tag: tags.heading1, color: '#fc9867', fontWeight: 'bold' },
@@ -118,6 +121,8 @@
         editor: null,
         cursorLine: 1,
         cursorColumn: 1,
+        tabSize: 2,
+        tabSizeCompartment: new Compartment(),
       };
     },
     computed: {
@@ -175,6 +180,7 @@
               markdown(),
               syntaxHighlighting(customMarkdownHighlight),
               oneDark,
+              this.tabSizeCompartment.of(indentUnit.of(" ".repeat(this.tabSize))),
               foldGutter({
                 markerDOM(open) {
                   const marker = document.createElement("span");
@@ -552,6 +558,16 @@
           this.scheduleAutoSave();
         }
       },
+      toggleTabSize() {
+        this.tabSize = this.tabSize === 2 ? 4 : 2;
+        this.updateEditorTabSize();
+      },
+      updateEditorTabSize() {
+        if (!this.editor) return;
+        this.editor.dispatch({
+          effects: this.tabSizeCompartment.reconfigure(indentUnit.of(" ".repeat(this.tabSize)))
+        });
+      },
     },
     async mounted() {
       this.initEditor();
@@ -761,5 +777,27 @@
   left: 0;
   right: 0;
   z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #2d2d2d;
+  color: #888;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-top: 1px solid #3d3d3d;
+}
+.tab-toggle-btn {
+  background-color: #3d3d3d;
+  color: #ccc;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.3s;
+}
+
+.tab-toggle-btn:hover {
+  background-color: #4d4d4d;
 }
 </style>
