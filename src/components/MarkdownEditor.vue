@@ -4,9 +4,19 @@
     <template v-if="localMode==='split'">
       <div id="editor" :style="{flex: splitPos}">
         <div id="toolbar">
+          <button id="bold-btn" @click="wrapTextWithMarkdown('**')">**粗體**</button>
+          <button id="italic-btn" @click="wrapTextWithMarkdown('*')">*斜體*</button>
+          <button id="code-btn" @click="wrapTextWithMarkdown('```')">```程式碼```</button>
+          <button id="unordered-list-btn" @click="insertListItem('- ')">無序清單</button>
+          <button id="ordered-list-btn" @click="insertListItem('1. ')">有序清單</button>
+          <button id="task-list-btn" @click="insertListItem('- [ ] ')">工作清單</button>
+          <button id="link-btn" @click="insertLink">[超連結](url)</button>
           <button id="hr-btn" @click="insertHorizontalRule">水平線</button>
         </div>
         <div ref="editorRef"></div>
+        <div id="status-bar">
+          <span>行: {{ cursorLine }}, 欄: {{ cursorColumn }}</span>
+        </div>
       </div>
       <!-- 分隔線 -->
       <div id="split-bar" @mousedown="startDrag"></div>
@@ -18,9 +28,19 @@
     <template v-else-if="localMode==='edit'">
       <div id="editor" style="flex:1;">
         <div id="toolbar">
+          <button id="bold-btn" @click="wrapTextWithMarkdown('**')">**粗體**</button>
+          <button id="italic-btn" @click="wrapTextWithMarkdown('*')">*斜體*</button>
+          <button id="code-btn" @click="wrapTextWithMarkdown('```')">```程式碼```</button>
+          <button id="unordered-list-btn" @click="insertListItem('- ')">無序清單</button>
+          <button id="ordered-list-btn" @click="insertListItem('1. ')">有序清單</button>
+          <button id="task-list-btn" @click="insertListItem('- [ ] ')">工作清單</button>
+          <button id="link-btn" @click="insertLink">[超連結](url)</button>
           <button id="hr-btn" @click="insertHorizontalRule">水平線</button>
         </div>
         <div ref="editorRef"></div>
+        <div id="status-bar">
+          <span>行: {{ cursorLine }}, 欄: {{ cursorColumn }}</span>
+        </div>
       </div>
     </template>
     <!-- 僅預覽模式 -->
@@ -37,14 +57,36 @@
   import hljs from 'highlight.js';
   import axios from 'axios';
   import { EditorView} from 'codemirror';
-  import { EditorState } from '@codemirror/state';
+  import { EditorState, EditorSelection } from '@codemirror/state';
   import { markdown } from '@codemirror/lang-markdown';
   import { oneDark } from '@codemirror/theme-one-dark';
   import { keymap } from '@codemirror/view';
   import { defaultKeymap, indentWithTab } from '@codemirror/commands';
   import { lineNumbers } from '@codemirror/view';
-  import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
-  
+  import { foldGutter} from '@codemirror/language';
+  import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
+  import { tags } from '@lezer/highlight';
+  const customMarkdownHighlight = HighlightStyle.define([
+    // 標題
+    { tag: tags.heading1, color: '#fc9867', fontWeight: 'bold' },
+    { tag: tags.heading2, color: '#fc9867', fontWeight: 'bold' },
+    { tag: tags.heading3, color: '#fc9867', fontWeight: 'bold' },
+    { tag: tags.heading4, color: '#fc9867', fontWeight: 'bold' },
+    { tag: tags.heading5, color: '#fc9867', fontWeight: 'bold' },
+    { tag: tags.heading6, color: '#fc9867', fontWeight: 'bold' },
+    // 加粗和斜體
+    { tag: tags.strong, fontWeight: 'bold' },
+    { tag: tags.emphasis, fontStyle: 'italic' },
+    // 程式碼加背景色
+    { tag: tags.monospace, color: '#f8f8f2', backgroundColor: '#44475a' },
+
+    { tag: tags.link, color: '#78dce8' }, // 連結文本
+    { tag: tags.url, color: '#7866ff' }, // URL
+
+    { tag: tags.contentSeparator, color: '#78dce8' }, //水平線
+    { tag: tags.list, color: '#78dce8' },
+  ]);
+
   export default {
     name: 'MarkdownEditor',
     props: {
@@ -74,6 +116,8 @@
         splitPos: 0.5,
         dragging: false,
         editor: null,
+        cursorLine: 1,
+        cursorColumn: 1,
       };
     },
     computed: {
@@ -118,34 +162,54 @@
           this.editor = null;
         }
       },
-      
       initEditor() {
-        this.destroyEditor();
-        
-        const startState = EditorState.create({
-          doc: this.markdownText,
-          extensions: [
-            lineNumbers(),
-            syntaxHighlighting(defaultHighlightStyle),
-            markdown(),
-            oneDark,
-            keymap.of([
-              ...defaultKeymap,
-              indentWithTab
-            ]),
-            EditorView.updateListener.of(update => {
-              if (update.docChanged) {
-                this.markdownText = update.state.doc.toString();
-                this.onTextChange();
-              }
-            })
-          ]
-        });
+        try {
+          this.destroyEditor();
 
-        this.editor = new EditorView({
-          state: startState,
-          parent: this.$refs.editorRef
-        });
+          console.log("正在初始化編輯器...");
+          
+          const startState = EditorState.create({
+            doc: this.markdownText,
+            extensions: [
+              lineNumbers(),
+              markdown(),
+              syntaxHighlighting(customMarkdownHighlight),
+              oneDark,
+              foldGutter({
+                markerDOM(open) {
+                  const marker = document.createElement("span");
+                  marker.textContent = open ? "▾" : "▸";
+                  marker.title = open ? "點擊折疊" : "點擊展開";
+                  return marker;
+                }
+              }),
+              keymap.of([
+                ...defaultKeymap,
+                indentWithTab
+              ]),
+              EditorView.updateListener.of(update => {
+                if (update.docChanged) {
+                  this.markdownText = update.state.doc.toString();
+                  this.onTextChange();
+                }
+                // 更新游標位置
+                const pos = update.state.selection.main.head;
+                const line = update.state.doc.lineAt(pos);
+                this.cursorLine = line.number;
+                this.cursorColumn = pos - line.from + 1;
+              })
+            ]
+          });
+
+          this.editor = new EditorView({
+            state: startState,
+            parent: this.$refs.editorRef
+          });
+          
+          console.log("編輯器初始化完成");
+        } catch (error) {
+          console.error("編輯器初始化失敗:", error);
+        }
       },
       updatePreview() {
         this.htmlOutput = marked.parse(this.markdownText);
@@ -211,6 +275,43 @@
             anchor: pos + newText.length
           }
         });
+        
+        if (this.localAutoSaveMode) {
+          this.scheduleAutoSave();
+        }
+      },
+      insertLink() {
+        if (!this.editor) return;
+        
+        const state = this.editor.state;
+        const selection = state.selection.main;
+        const from = selection.from;
+        const to = selection.to;
+        const selectedText = state.sliceDoc(from, to);
+        
+        // 彈出對話框讓用戶輸入URL
+        const url = prompt('請輸入連結URL:', 'https://');
+        
+        // 如果用戶取消了輸入，則不做任何事情
+        if (url === null) return;
+        
+        let newText;
+        if (selectedText) {
+          newText = `[${selectedText}](${url})`;
+        } else {
+          const linkText = prompt('請輸入連結文字:', '連結文字');
+          // 如果用戶取消了第二次輸入，則使用默認文字
+          newText = `[${linkText !== null ? linkText : '連結文字'}](${url})`;
+        }
+        
+        this.editor.dispatch({
+          changes: { from, to, insert: newText },
+          selection: EditorSelection.cursor(from + newText.length)
+        });
+        
+        // 確保編輯器內容更新
+        this.markdownText = this.editor.state.doc.toString();
+        this.onTextChange();
         
         if (this.localAutoSaveMode) {
           this.scheduleAutoSave();
@@ -376,6 +477,81 @@
         window.removeEventListener('mousemove', this.onDrag);
         window.removeEventListener('mouseup', this.stopDrag);
       },
+      wrapTextWithMarkdown(mark) {
+        if (!this.editor) return;
+        
+        const state = this.editor.state;
+        const selection = state.selection.main;  // 獲取主選擇
+        const from = selection.from;
+        const to = selection.to;
+        const selectedText = state.sliceDoc(from, to);
+        
+        let newText;
+        if (selectedText) {
+          if (mark === '```') {
+            newText = mark + '\n' + selectedText + '\n' + mark;
+          } else {
+            newText = mark + selectedText + mark;
+          }
+        } else {
+          newText = mark + mark;
+        }
+        
+        // 創建一個新的選擇，在標記之間
+        const newSelection = selectedText 
+          ? EditorSelection.range(from + mark.length, to + mark.length)
+          : EditorSelection.cursor(from + mark.length);
+        
+        this.editor.dispatch({
+          changes: { from, to, insert: newText },
+          selection: newSelection
+        });
+      },
+      insertListItem(prefix) {
+        if (!this.editor) return;
+        
+        const state = this.editor.state;
+        const selection = state.selection.main;
+        const from = selection.from;
+        const to = selection.to;
+        
+        // 獲取選中的文本
+        const selectedText = state.sliceDoc(from, to);
+        
+        // 檢查選擇是否跨越多行
+        const isMultiLine = selectedText.includes('\n');
+        
+        if (isMultiLine) {
+          // 處理多行選擇
+          const lines = selectedText.split('\n');
+          const formattedText = lines.map(line => prefix + line).join('\n');
+          
+          this.editor.dispatch({
+            changes: { from, to, insert: formattedText },
+            selection: { anchor: from, head: from + formattedText.length }
+          });
+        } else {
+          // 獲取當前行
+          const line = state.doc.lineAt(from);
+          const lineStart = line.from;
+          
+          // 創建包含前綴的新行
+          const newLineContent = prefix + state.sliceDoc(lineStart, line.to);
+          
+          this.editor.dispatch({
+            changes: { from: lineStart, to: line.to, insert: newLineContent },
+            selection: { anchor: lineStart + prefix.length, head: lineStart + prefix.length }
+          });
+        }
+        
+        // 確保編輯器內容更新
+        this.markdownText = this.editor.state.doc.toString();
+        this.onTextChange();
+        
+        if (this.localAutoSaveMode) {
+          this.scheduleAutoSave();
+        }
+      },
     },
     async mounted() {
       this.initEditor();
@@ -395,6 +571,26 @@
 </script>
   
 <style scoped>
+.cm-foldGutter {
+  width: 14px;
+  text-align: center;
+  color: #888;
+}
+
+.cm-foldGutter-open {
+  cursor: pointer;
+}
+
+.cm-foldPlaceholder {
+  background: #3a3a3a;
+  border: 1px solid #5a5a5a;
+  border-radius: 3px;
+  margin: 0 5px;
+  padding: 0 7px;
+  color: #ccc;
+  font-size: 90%;
+}
+
 #split-bar {
   width: 6px;
   cursor: col-resize;
@@ -418,12 +614,15 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 20px;
+  padding: 20px 20px 0 20px;
   background-color: #1e1e1e;
+  position: relative;
 }
 
 #toolbar {
   margin-bottom: 10px;
+  padding-left: 0;
+  padding-right: 0;
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
@@ -496,7 +695,7 @@
 
 #markdown-output pre {
   background-color: #2d2d2d;
-  border: 1px solid #3d3d3d;
+  border: 1px solid #2d2d2d;
 }
 
 #markdown-output blockquote {
@@ -520,8 +719,11 @@
 
 .cm-editor {
   flex: 1;
-  height: calc(100% - 50px);
+  height: calc(100% - 90px);
   overflow: auto;
+  background-color: #1e1e1e !important;
+  margin-bottom: 0;
+  padding: 0 0 20px 0;
 }
 
 .cm-editor .cm-content {
@@ -533,5 +735,31 @@
 
 .cm-editor .cm-line {
   padding: 0 4px;
+}
+
+.cm-editor .cm-gutters {
+  background-color: #1e1e1e !important;
+  border-right: 1px solid #3d3d3d;
+}
+
+.cm-editor .cm-activeLineGutter {
+  background-color: #2d2d2d !important;
+}
+
+.cm-editor .cm-activeLine {
+  background-color: #2d2d2d !important;
+}
+
+#status-bar {
+  background-color: #2d2d2d;
+  color: #888;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-top: 1px solid #3d3d3d;
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
 }
 </style>
