@@ -130,6 +130,7 @@
                       <i v-else class="triangle down"></i>
                     </span>
                   </th>
+                  <th>說明</th>
                   <th @click="sortBy('state')">
                     狀態
                     <span v-if="sortByField === 'state'">
@@ -150,6 +151,22 @@
               <tbody>
                 <tr v-for="item in showTaskItem" :key="item._id" class="task-row">
                   <td><input v-model="item.name" @blur="updateItem(item)" /></td>
+                  <td>
+                    <!-- Button to open the modal -->
+                    <button @click="EditContent(item)" class="content-icon">
+                      🗒️
+                    </button>
+
+                    <!-- Modal that appears when editingItemId matches the item's ID -->
+                    <div v-show="editingItemId === item._id" id="editModal" :class="{ open: editingItemId === item._id }">
+                      <div class="modal-content">
+                        <!-- Bind textarea to editingContent instead of item.content -->
+                        <textarea v-model="editingContent" rows="4" cols="50"></textarea>
+                        <button @click="saveChanges(item)" class="modal-save-button">Save</button>
+                        <button @click="closeModal()" class="modal-cancel-button">Cancel</button>
+                      </div>
+                    </div>
+                  </td>
                   <td>
                     <select v-model="item.state" @change="updateItem(item)">
                       <option value="未開始">未開始</option>
@@ -173,6 +190,7 @@
               </tbody>
             </table>
           </div>
+
           <button @click="addItem" class="task-title clickable">+ 新增項目</button>
         </div>
         <!-- 如果 FolderId 為 None，顯示第一層的文件夾 -->
@@ -205,15 +223,8 @@ export default {
       showTaskItem: null,
       sortByField: 'name',
       sortOrder: 'asc', // 'asc' 表示升序，'desc' 表示降序
-
-      folders: [],
-      notes: [],
-      userName: localStorage.getItem('userName') || '未知用戶',
-      currentFolder: null,
-      firstLevelFolders: [],
-      disabledAddingFolder: false,
-      showOptions: {},
-      optionsPosition: {}, 
+      editingItemId: null,
+      editingContent: '',
     };
   },
   computed: {
@@ -298,7 +309,8 @@ export default {
               itemId: item._id,
               name: item.name, 
               state: item.state,
-              time: item.time
+              time: item.time,
+              content: item.content
             });
             const newItem = response.data.item;
             await this.fetchUserTasks();
@@ -436,194 +448,31 @@ export default {
         }
       });
     },
+    // Open the modal and set the current item as the one being edited
+    EditContent(item) {
+      this.editingItemId = item._id; // 設定編輯項目ID，顯示modal
+      if (item) {
+        this.editingContent = item.content; // 設定編輯內容
+      }
+    },
 
+    // Save the changes when clicking save
+    saveChanges(item) {
+      item.content = this.editingContent
+      this.updateItem(item);
+      this.closeModal(); // 儲存後關閉modal
+    },
+
+    // Close the modal
+    closeModal() {
+      this.editingItemId = null; // Reset editingItemId to hide the modal
+    },
+    
 
     handleLogout() {
       localStorage.removeItem('userId');
       localStorage.removeItem('userName');
       this.$router.push('/');
-    },
-    async addFolderButtonHandle() {
-      const folderName = prompt('請輸入資料夾名稱：');
-      this.addFolder(folderName);
-      await this.fetchUserFolders();
-      this.setCurrentFolder();
-    },
-    addNoteButtonHandle() {
-      const noteName = prompt('請輸入筆記名稱：');
-      this.addNote(noteName);
-    },
-    async fetchUserFolders() {
-      this.folders = []
-      try {
-        const userId = localStorage.getItem('userId');
-        const response = await axios.post('/api/getUserFolders', { userId });
-        const folders = response.data.folders;
-        const folderMap = {};
-        folders.forEach(folder => {
-          folder.children = [];
-          folderMap[folder._id] = folder;
-        });
-        const rootFolders = [];
-        folders.forEach(folder => {
-          if (folder.folder) {
-            const parent = folderMap[folder.folder];
-            if (parent) {
-              folder.level = (parent.level ?? 0) + 1; // 若 parent 没有 level，默认为 0
-              parent.children.push(folder);
-            }
-          } else {
-            folder.level = 0; // 根目录层级为 0
-            rootFolders.push(folder);
-          }
-        });
-        this.folders = rootFolders;
-        console.log(this.folders); // 打印文件夹数据
-      } catch (error) {
-        console.error('取得筆記失敗：', error);
-        alert('無法取得筆記');
-      }
-    },
-    async fetchUserNotes() {
-      this.notes = []
-      try {
-        const userId = localStorage.getItem('userId');
-        const folderId = localStorage.getItem('folderId');
-        const response = await axios.post('/api/getUserNotes', { userId, folderId});
-        const notes = response.data.notes;
-        this.notes = notes
-      } catch (error) {
-        console.error('取得筆記失敗：', error);
-        alert('無法取得筆記');
-      }
-    },
-    findFolderById(FolderId) {
-      const findFolder = (folders) => {
-        for (let folder of folders) {
-          if (folder._id === FolderId) {
-            this.currentFolder = folder;
-            return;
-          }
-          if (folder.children && folder.children.length) {
-            findFolder(folder.children);
-          }
-        }
-      };
-      findFolder(this.folders);
-    },
-    navigateToFolder(folderId) {
-        localStorage.setItem('folderId', folderId);
-        console.log(`Navigating to folder with ID: ${folderId}`);
-        this.setCurrentFolder()
-    },
-    navigateToNote(noteId) {  
-      localStorage.setItem('noteId', noteId);
-      console.log(`Navigating to note with ID: ${noteId}`);
-      this.$router.push({ name: 'editor' });
-    },
-    async setCurrentFolder() {
-      this.currentFolder = null
-      this.firstLevelFolders = []
-      this.disabledAddingFolder = false;
-      const FolderId = localStorage.getItem('folderId');
-      if (FolderId && FolderId !== 'None') {
-        this.findFolderById(FolderId);
-        if(this.currentFolder.level == 4){
-            this.disabledAddingFolder = true;
-        }
-      } else {
-        this.firstLevelFolders = this.folders;
-      }
-      await this.fetchUserNotes();
-    },
-    backToRoot() {
-        localStorage.removeItem('folderId');
-        this.setCurrentFolder();
-    },
-    toggleOptions(id, event) {
-      // toggle 開關邏輯
-      if (this.showOptions[id]) {
-        this.hideOptions(id);
-        return;
-      }
-
-      this.showOptions = {};
-
-      const rect = event.target.getBoundingClientRect();
-      this.optionsPosition[id] = {
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
-      };
-
-      this.showOptions[id] = true;
-
-      // 建立 document click handler，點到 menu 外面就關掉
-      const clickOutsideHandler = (e) => {
-        const menu = document.querySelector('.options-menu');
-        const trigger = event.target;
-
-        // 如果點擊不是 menu 也不是 trigger（⋯）
-        if (
-          menu && !menu.contains(e.target) &&
-          !trigger.contains(e.target)
-        ) {
-          this.hideOptions(id);
-          document.removeEventListener('click', clickOutsideHandler);
-        }
-      };
-
-      setTimeout(() => {
-        document.addEventListener('click', clickOutsideHandler);
-      }, 0);
-    },
-    hideOptions(id) {
-      this.showOptions[id] = false;
-    },
-    async renameNote(noteId){
-      try {
-          const noteName = prompt('請輸入筆記名稱：');
-          const response = await axios.post('/api/updateNote', { noteId, name: noteName, content: null});
-          console.log(response.data.node);
-          alert('修改成功');
-          this.setCurrentFolder();
-        } catch (error) {
-          console.error('取得筆記失敗：', error);
-          alert('無法取得筆記');
-        }
-    },
-    async renameFolder(folderId){
-      try {
-          const folderName = prompt('請輸入資料夾名稱：');
-          const response = await axios.post('/api/renameFolder', { folderId, name: folderName });
-          console.log(response.data.folder);
-          alert('修改成功');
-          await this.fetchUserFolders();
-          this.setCurrentFolder();
-        } catch (error) {
-          console.error('取得資料夾失敗：', error);
-          alert('無法取得資料夾');
-        }
-    },
-    async deleteNote(noteId){
-      try {
-          await axios.post('/api/deleteNote', { noteId });
-          alert('刪除成功');
-          this.setCurrentFolder();
-        } catch (error) {
-          console.error('取得資料夾失敗：', error);
-          alert('無法取得資料夾');
-        }
-    },
-    async deleteFolder(folderId){
-      try {
-          await axios.post('/api/deleteFolder', { folderId });
-          alert('刪除成功');
-          await this.fetchUserFolders();
-          this.setCurrentFolder();
-        } catch (error) {
-          console.error('取得資料夾失敗：', error);
-          alert('無法取得資料夾');
-        }
     },
   },
   async mounted() {
@@ -664,84 +513,6 @@ export default {
   font-weight: bold;
 }
 
-/* Folder list */
-.folder-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-}
-
-/* Folder Item */
-.folder-item {
-  margin-bottom: 16px;
-}
-
-.folder-name {
-  font-weight: 600;
-  font-size: 18px;
-  padding: 12px 24px;
-  cursor: pointer;
-  transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease;
-  border-radius: 8px;
-  background-color: #f0f4f8;
-  color: #333;
-  border: 2px solid #ccc;
-  width: 100%;
-  text-align: left;
-  display: block;
-}
-
-.folder-name:hover {
-  background-color: #63b3ed;
-  color: #fff;
-  border-color: #63b3ed;
-  transform: scale(1.05);
-}
-
-/* Folder title */
-.folder-title {
-  font-size: 20px;
-  font-weight: bold;
-  color: #e2e8f0;
-  margin-bottom: 16px;
-  background: none;
-  border: none;
-  padding: 0;
-  text-align: left;
-}
-
-/* Note list */
-.note-list {
-  margin-left: 16px;
-  color: #e2e8f0;
-}
-
-.note-item {
-  padding-left: 8px;
-  transition: color 0.3s ease;
-}
-
-.note-item:hover {
-  color: #48bb78; /* Green */
-}
-
-/* New Folder and Note */
-.add-folder, .add-note {
-  margin-top: 24px;
-  margin-bottom: 32px;
-}
-
-.section-title {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-/* Input group */
-.input-group {
-  display: flex;
-  gap: 16px;
-}
 
 .input {
   border: 1px solid #e2e8f0;
@@ -801,78 +572,6 @@ export default {
 
 .main-content ul li {
   margin-bottom: 8px;
-}
-
-/* Folder name button layout */
-.folder-name {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-weight: 600;
-  font-size: 18px;
-  padding: 12px 24px;
-  cursor: pointer;
-  transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease;
-  border-radius: 8px;
-  background-color: #f0f4f8;
-  color: #333;
-  border: 2px solid #ccc;
-  width: 100%;
-  text-align: left;
-}
-
-.more-dots {
-  font-size: 18px;
-  color: #666;
-  cursor: pointer;
-  margin-left: auto; /* Push it to the far right */
-}
-
-.folder-name:hover {
-  background-color: #63b3ed;
-  color: #fff;
-  border-color: #63b3ed;
-  transform: scale(1.05);
-}
-
-/* Folder label (for ellipsis in case of long name) */
-.folder-name .folder-label {
-  flex-grow: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-/* Options menu */
-.options-menu {
-  position: absolute;
-  background-color: white;
-  border: 1px solid #ddd;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  padding: 0; /* 去除內邊距 */
-  z-index: 9999;
-  display: flex;
-  flex-direction: column; /* 垂直排列按鈕 */
-  width: 150px; /* 設置一個固定寬度，視需要調整 */
-  height: auto; /* 高度自動根據內容調整 */
-}
-
-.options-menu button {
-  flex-grow: 1; /* 讓按鈕填滿整個菜單的高度 */
-  margin: 5px 0;
-  padding: 10px;
-  text-align: center;
-  border: none;
-  background: none;
-}
-
-.options-menu button:hover {
-  background-color: #f0f0f0;
-}
-
-.more-dots {
-  cursor: pointer;
-  margin-left: 5px;
 }
 
 .logout-container {
@@ -1295,6 +994,107 @@ export default {
 
 .down {
   border-top: 10px solid white; /* 下三角形顏色為白色 */
+}
+
+.content-icon {
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 24px; /* Adjust the size as needed */
+}
+
+.content-icon:hover {
+  opacity: 0.8; /* Optional: Add a hover effect */
+}
+
+/* Overlay for the modal */
+#editModal {
+  display: flex; /* Default to flex so it can be shown/hidden with opacity */
+  position: fixed; /* Stays fixed at the top of the page */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(30, 30, 30, 0.8); /* Dark gray background with transparency */
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Ensure it’s above other content */
+  transition: opacity 0.3s ease-in-out;
+  opacity: 0; /* Hidden by default */
+}
+
+/* Modal content box */
+.modal-content {
+  background-color: #333; /* Dark gray background */
+  color: #fff; /* White text */
+  padding: 60px; /* Increase padding to make the content area larger */
+  border-radius: 10px; /* Rounded corners */
+  max-width: 800px; /* Increase max width to allow for a wider modal */
+  width: 100%; /* Full width responsive */
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3); /* Slight shadow for depth */
+  display: flex;
+  flex-direction: column;
+  gap: 30px; /* Space between the elements inside the modal */
+}
+
+/* Textarea styling */
+textarea {
+  background-color: #444; /* Dark gray background */
+  color: #fff; /* White text */
+  padding: 16px; /* Larger padding for the textarea */
+  font-size: 20px; /* Increase font size for better readability */
+  border: 2px solid #555; /* Darker border */
+  border-radius: 8px; /* Rounded corners for the input */
+  width: 100%; /* Full width */
+  min-height: 200px; /* Make the textarea taller */
+  resize: none; /* Disable resizing */
+  box-sizing: border-box; /* Ensure padding and border are included in the width */
+}
+
+/* When the modal is open, change opacity and display */
+#editModal.open {
+  opacity: 1; /* Fully visible when open */
+}
+
+/* Optional: Close modal when clicking outside */
+#editModal.open {
+  cursor: pointer;
+}
+
+#editModal.open .modal-content {
+  cursor: auto;
+}
+
+/* Styling for the Save button */
+.modal-save-button {
+  background-color: #4CAF50; /* Green background */
+  color: white; /* White text */
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.modal-save-button:hover {
+  background-color: #45a049; /* Darker green on hover */
+}
+
+/* Styling for the Cancel button */
+.modal-cancel-button {
+  background-color: #f44336; /* Red background */
+  color: white; /* White text */
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.modal-cancel-button:hover {
+  background-color: #e53935; /* Darker red on hover */
 }
 
 </style>

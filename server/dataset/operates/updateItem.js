@@ -1,7 +1,7 @@
 const { TaskItem } = require('../task_item_table');
 
 const updateItem = async (req, res) => {
-  const { itemId, name, state, time } = req.body;
+  const { itemId, name, state, time, content } = req.body;
   try {
     const item = await TaskItem.findById(itemId);
 
@@ -12,6 +12,7 @@ const updateItem = async (req, res) => {
     item.name = name;
     item.state = state;
     item.time = time;
+    item.content = content;
 
     await item.save();
 

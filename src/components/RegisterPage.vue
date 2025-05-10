@@ -45,7 +45,7 @@
       <button type="submit" class="btn-submit">註冊</button>
       <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
       <div class="login-link">
-        已有帳號？<router-link to="/login">前往登入</router-link>
+        已有帳號？<router-link to="/">前往登入</router-link>
       </div>
     </form>
   </div>

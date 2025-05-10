@@ -7,7 +7,7 @@ import TaskPage from '../components/TaskPage.vue'
 
 const routes = [
   {
-    path: '/login',
+    path: '/',
     name: 'login',
     component: Login
   },
