@@ -3,10 +3,11 @@ import HomeView from '../views/HomeView.vue'
 import Login from '../components/LoginPage.vue'
 import Register from '../components/RegisterPage.vue'
 import UserPage from '../components/UserPage.vue'
+import TaskPage from '../components/TaskPage.vue'
 
 const routes = [
   {
-    path: '/',
+    path: '/login',
     name: 'login',
     component: Login
   },
@@ -25,6 +26,12 @@ const routes = [
     path: '/editor',
     name: 'editor',
     component: HomeView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/task',
+    name: 'task',
+    component: TaskPage,
     meta: { requiresAuth: true }
   }
 ]

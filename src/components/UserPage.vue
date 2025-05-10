@@ -8,8 +8,11 @@
     <!-- Sidebar -->
     <div class="sidebar">
       <!-- Sidebar Header -->
-      <div class="sidebar-header">
-        <h1 class="sidebar-title">{{ userName }} 的筆記</h1> <!-- 這裡會顯示從 localStorage 中獲取的 userName -->
+      <div class="sidebar-header header-with-button">
+        <h1 class="sidebar-title">{{ userName }} 的筆記</h1>
+        <button class="mode-toggle-button" @click="toTaskPage">
+          任務清單
+        </button>
       </div>
 
       <!-- Folder & Note List -->
@@ -172,6 +175,9 @@ export default {
     };
   },
   methods: {
+    toTaskPage(){
+      this.$router.push({ name: 'task' });
+    },
     handleLogout() {
       localStorage.removeItem('userId');
       localStorage.removeItem('userName');
@@ -674,4 +680,37 @@ export default {
 .logout-button:hover {
   background-color: #cc0000;
 }
+
+.header-with-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mode-toggle-button {
+  background: none;
+  border: none;
+  color: #e2e8f0;
+  font-size: 18px;            /* 字體加大 */
+  font-weight: 600;           /* 更粗一些讓文字更明顯 */
+  cursor: pointer;
+  padding: 12px 20px;         /* 內距加大：整體放大感 */
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  border-radius: 6
+}
+
+.mode-toggle-button:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  transform: scale(1.05);     /* 懸浮時微放大 */
+}
+
+.mode-toggle-button:active {
+  transform: scale(0.98);
+}
+
 </style>
+
+
+
+

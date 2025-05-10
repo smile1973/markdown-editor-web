@@ -11,6 +11,13 @@ const { renameFolder } = require('./operates/renameFolder');
 const { deleteNote } = require('./operates/deleteNote');
 const { deleteFolder } = require('./operates/deleteFolder');
 const { uploadImage } = require('./operates/uploadImage');
+const { createTask } = require('./operates/createTask');
+const { getUserTasks } = require('./operates/getUserTasks');
+const { createTaskItem } = require('./operates/createTaskItem');
+const { updateItem } = require('./operates/updateItem');
+const { updateTask } = require('./operates/updateTask');
+const { deleteTask } = require('./operates/deleteTask');
+const { deleteItem } = require('./operates/deleteItem');
 
 router.post('/login', login);
 router.post('/register', register);
@@ -24,5 +31,12 @@ router.post('/renameFolder', renameFolder);
 router.post('/deleteNote', deleteNote);
 router.post('/deleteFolder', deleteFolder);
 router.post('/uploadImage', uploadImage);
+router.post('/createTask', createTask);
+router.post('/getUserTasks', getUserTasks);
+router.post('/createTaskItem', createTaskItem);
+router.post('/updateItem', updateItem);
+router.post('/updateTask', updateTask);
+router.post('/deleteTask', deleteTask);
+router.post('/deleteItem', deleteItem);
 
 module.exports = router;
