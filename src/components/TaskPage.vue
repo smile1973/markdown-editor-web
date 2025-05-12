@@ -31,8 +31,8 @@
     <!-- Main Content (Right) -->
     <div class="main-content">
       <!-- 根據 FolderId 顯示相應的資料夾內容 -->
-      <div class="task-container">
-        <div v-if="currentTask">
+      <div class="split-container">
+        <div v-if="currentTask" class="task-container" :style="taskContainerStyle">
           <div class="header-with-button">
             <input
               v-model="currentTask.name"
@@ -145,12 +145,14 @@
                       <i v-else class="triangle down"></i>
                     </span>
                   </th>
+                  <th>筆記</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="item in showTaskItem" :key="item._id" class="task-row">
                   <td><input v-model="item.name" @blur="updateItem(item)" /></td>
+
                   <td>
                     <!-- Button to open the modal -->
                     <button @click="EditContent(item)" class="content-icon">
@@ -159,7 +161,7 @@
 
                     <!-- Modal that appears when editingItemId matches the item's ID -->
                     <div v-show="editingItemId === item._id" id="editModal" :class="{ open: editingItemId === item._id }">
-                      <div class="modal-content">
+                      <div class="edit-modal-content">
                         <!-- Bind textarea to editingContent instead of item.content -->
                         <textarea v-model="editingContent" rows="4" cols="50"></textarea>
                         <button @click="saveChanges(item)" class="modal-save-button">Save</button>
@@ -167,6 +169,7 @@
                       </div>
                     </div>
                   </td>
+
                   <td>
                     <select v-model="item.state" @change="updateItem(item)">
                       <option value="未開始">未開始</option>
@@ -174,6 +177,7 @@
                       <option value="完成">完成</option>
                     </select>
                   </td>
+
                   <td>
                     <input
                       type="datetime-local"
@@ -181,11 +185,48 @@
                       @change="e => { item.time = e.target.value; updateItem(item); }"
                     />
                   </td>
+
+                  <td>
+                    <!-- Button to open the modal -->
+                    <button @click="NoteContent(item._id)" class="content-icon">
+                      📒
+                    </button>
+
+                    <!-- Modal overlay -->
+                    <div v-if="showNoteContent" class="modal-overlay">
+                      <div class="note-modal">
+                        <div v-if="showUserNotes" class="modal-body">
+                          <p class="linkable-notes-title">可連結筆記</p>
+                          <div v-for="note in showUserNotes" :key="note._id">
+                            <button @click="connectNote(currentItemId, note._id)" class="note-button">
+                              {{ note.name }}  <!-- 顯示筆記標題，根據你的資料結構調整 -->
+                            </button>
+                          </div>
+                        </div>
+                        <div v-else class="modal-body">
+                            <p class="linkable-notes-title">已連結筆記</p>
+                            <div v-for="note in taskNotes" :key="note._id">
+                              <!-- 根據筆記內容生成按鈕 -->
+                              <button @click="fetchNote(note.note)" class="note-button">
+                                {{ note.noteName }}  <!-- 顯示筆記標題，根據你的資料結構調整 -->
+                              </button>
+                              <button @click="deleteNoteLink(note.note)" class="delete-button">
+                                X
+                              </button>
+                            </div>
+                            <button @click="showUserNoteList" class="add-note-button">+新增</button>
+                        </div>
+                        <button @click="closeModal" class="modal-cancel-button">Close</button>
+                      </div>
+                    </div>
+                  </td>
+
                   <td class="delete-cell">
                     <button @click="deleteItem(item._id)" class="delete-icon">
                       刪除
                     </button>
                   </td>
+
                 </tr>
               </tbody>
             </table>
@@ -193,9 +234,19 @@
 
           <button @click="addItem" class="task-title clickable">+ 新增項目</button>
         </div>
-        <!-- 如果 FolderId 為 None，顯示第一層的文件夾 -->
-        <div v-else>
-          <!-- 其他內容 -->
+
+        <div v-show="noteContent !== null" class="note-content-block" :style="noteContentStyle">
+          <button class="close-note-btn" @click="resetNoteContemt">
+            ❌
+          </button>
+          <div class="note-header">
+            <h1>筆記: {{ noteName }}</h1>
+            <button class="edit-note-btn" @click="editNote">
+              ✏️ 編輯
+            </button>
+          </div>
+          <hr>
+          <div id="markdown-output" v-html="noteContent"></div>
         </div>
       </div>
     </div>
@@ -204,6 +255,8 @@
 
 <script>
 import axios from 'axios';
+import { marked } from 'marked';
+import hljs from 'highlight.js';
 
 export default {
   data() {
@@ -225,6 +278,14 @@ export default {
       sortOrder: 'asc', // 'asc' 表示升序，'desc' 表示降序
       editingItemId: null,
       editingContent: '',
+      userName: localStorage.getItem('userName') || '未知用戶',
+      showNoteContent: false,
+      showUserNotes: null,
+      taskNotes: null,
+      currentItemId: null,
+      noteContent: null,
+      noteName: null,
+      noteId: null,
     };
   },
   computed: {
@@ -239,6 +300,17 @@ export default {
           (!this.filters.endDate || itemDate <= new Date(this.filters.endDate));
         return matchName && matchState && matchDate;
       });
+    },
+    taskContainerStyle() {
+      return {
+        width: this.noteContent !== null ? '48%' : '100%', // 當 noteContent 不為 null 時，task-container 占 48% 寬度
+      };
+    },
+    noteContentStyle() {
+      return {
+        width: this.noteContent !== null ? '48%' : '0', // 當 noteContent 不為 null 時，note-content-block 占 48% 寬度，否則寬度為0
+        display: this.noteContent !== null ? 'block' : 'none', // 根據 noteContent 是否有值來控制顯示與否
+      };
     },
   },
   methods: {
@@ -274,6 +346,7 @@ export default {
       const targetTask = this.tasks.find(task => task._id === TaskId);
       this.currentTask = targetTask
       this.applyFilters();
+      this.resetNoteContemt();
     },
     formatDateTimeForInput(isoString) {
       if (!isoString) return '';
@@ -455,28 +528,117 @@ export default {
         this.editingContent = item.content; // 設定編輯內容
       }
     },
-
     // Save the changes when clicking save
     saveChanges(item) {
       item.content = this.editingContent
       this.updateItem(item);
       this.closeModal(); // 儲存後關閉modal
     },
-
     // Close the modal
     closeModal() {
       this.editingItemId = null; // Reset editingItemId to hide the modal
+      this.showNoteContent = false;
+      this.showUserNotes = null;
+      this.currentItemId = null;
+      this.taskNotes = null;
     },
-    
-
+    async NoteContent(itemId) {
+      this.currentItemId = itemId;
+      try {
+          const response = await axios.post('/api/getTaskNotes', {
+            itemId : itemId
+          });
+          this.taskNotes = response.data.taskNotes;
+          this.showNoteContent = true;
+      } catch (error) {
+          console.error('取得失敗:', error);
+          alert('無法取得');
+      }
+    },
+    async connectNote(itemId, noteId){
+      try {
+          await axios.post('/api/connectTaskNote', {
+            itemId,
+            noteId
+          });
+          this.NoteContent(this.currentItemId);
+      } catch (error) {
+          console.error('連結失敗:', error);
+          alert('無法連結');
+      }
+      this.showUserNotes = null;
+    },
     handleLogout() {
       localStorage.removeItem('userId');
       localStorage.removeItem('userName');
       this.$router.push('/');
     },
+    async showUserNoteList(){
+      const userId = localStorage.getItem('userId');
+      try {
+            const response = await axios.post('/api/getUserNotes', {
+            userId,
+            folderId: 'null',
+            });
+            this.showUserNotes = response.data.notes;
+            this.showUserNotes = this.showUserNotes.filter(note => {
+              return !this.taskNotes.some(taskNote => taskNote.note === note._id);
+            });
+        } catch (error) {
+            console.error('取得筆記失敗:', error);
+            alert('取得筆記失敗');
+        }
+    },
+    async deleteNoteLink(noteId){
+      try {
+            await axios.post('/api/deleteNoteLink', {
+            itemId: this.currentItemId,
+            noteId,
+            });
+            this.NoteContent(this.currentItemId);
+            this.resetNoteContemt();
+        } catch (error) {
+            console.error('刪除失敗:', error);
+            alert('刪除失敗');
+        }
+    },
+    async fetchNote(noteId) {
+      try {
+        const response = await axios.post('/api/getNote', { noteId });
+        const note = response.data.note[0];
+        this.noteId = note._id;
+        this.noteName = note.name;
+        if(note.content){
+          this.noteContent = marked.parse(note.content);
+        }else{
+          this.noteContent = marked.parse('');
+        }
+        this.$nextTick(() => {
+          const codeBlocks = document.querySelectorAll('#markdown-output pre code');
+          codeBlocks.forEach(block => {
+            hljs.highlightElement(block);
+          });
+        this.closeModal();
+        });
+      } catch (error) {
+        console.error('取得筆記失敗：', error);
+        alert('無法取得筆記');
+      }
+    },
+    resetNoteContemt(){
+      this.noteContent = null;
+      this.noteName = null;
+      this.noteId = null;
+    },
+    editNote(){
+      localStorage.setItem('noteId', this.noteId);
+      console.log(`Navigating to note with ID: ${this.noteId}`);
+      this.$router.push({ name: 'editor' });
+    },
   },
   async mounted() {
     localStorage.removeItem('TaskId');
+    localStorage.removeItem('noteId');
     this.resetFilters();
     await this.fetchUserTasks();
   }
@@ -706,12 +868,21 @@ export default {
   outline: none; /* 移除焦點外框 */
 }
 
-/* Container for task elements with margin */
-.task-container {
-  margin-top: 50px; /* 調整間距 */
-  text-align: center; /* 整體內容置中 */
+.split-container {
+  margin-top: 50px;
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
 }
 
+.task-container {
+  padding: 10px;
+}
+
+.note-content-block {
+  margin-top: 20px;
+  padding: 10px;
+}
 
 .header-with-button {
   display: flex;
@@ -1024,7 +1195,7 @@ export default {
 }
 
 /* Modal content box */
-.modal-content {
+.edit-modal-content {
   background-color: #333; /* Dark gray background */
   color: #fff; /* White text */
   padding: 60px; /* Increase padding to make the content area larger */
@@ -1083,8 +1254,8 @@ textarea {
 
 /* Styling for the Cancel button */
 .modal-cancel-button {
-  background-color: #f44336; /* Red background */
-  color: white; /* White text */
+  background-color: #f44336; /* 紅色背景 */
+  color: white;              /* 白色文字 */
   padding: 10px 20px;
   border: none;
   border-radius: 5px;
@@ -1097,4 +1268,112 @@ textarea {
   background-color: #e53935; /* Darker red on hover */
 }
 
+.note-modal {
+  background-color: #444;
+  color: #222;
+  padding: 30px 40px;
+  border-radius: 12px;
+  min-width: 400px;
+  min-height: 600px;
+  max-width: 90vw;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-size: 1.1rem;
+  transform: scale(1.05);
+  transition: all 0.3s ease;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* 讓內容往上、按鈕往下 */
+}
+
+.modal-body {
+  flex-grow: 1; /* 讓內容區域填滿上方空間 */
+  max-height: 450px;  /* 設定最大高度，根據需要調整 */
+  overflow-y: auto;   /* 允許垂直滾動 */
+  padding-right: 10px;
+}
+
+.add-note-button {
+  background: none;         /* 無背景 */
+  border: none;             /* 無邊框 */
+  color: white;             /* 白色文字 */
+  font-size: 16px;          /* 你可以依需求調整字體大小 */
+  cursor: pointer;          /* 滑鼠移過去變指標 */
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.add-note-button:hover {
+  transform: scale(1.2);    /* 懸浮放大 */
+  color: #4caf50;           /* 可選：懸浮時變黃色或其他色 */
+}
+
+.note-button {
+  background: none;             /* 無背景 */
+  border: none;                 /* 無邊框 */
+  color: white;                 /* 白色文字 */
+  padding: 10px 20px;           /* 調整內邊距 */
+  cursor: pointer;              /* 滑鼠移動到按鈕上時變成指標 */
+  transition: transform 0.2s ease, color 0.2s ease; /* 文字顏色過渡效果 */
+  font-size: 20px; 
+}
+
+.note-button:hover {
+  color: #4CAF50;               /* 懸浮時改變文字顏色為綠色 */
+  transform: scale(1.1);         /* 懸浮時放大 */
+}
+
+.linkable-notes-title {
+  color: white;            /* 白色文字 */
+  font-size: 35px;         /* 可以調整字體大小 */
+  font-weight: 600;        /* 字體加粗 */
+  margin-bottom: 10px;     /* 底部留點空間 */
+  opacity: 0.8;            /* 適當透明度，增加柔和感 */
+}
+
+.note-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+}
+
+.edit-note-btn {
+  background-color: #333; /* 深灰底 */
+  color: #fff; /* 白字 */
+  border: none; /* 可選：移除邊框 */
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.edit-note-btn:hover {
+  background-color: #555; /* 滑鼠懸停時變更顏色 */
+}
+
+.close-note-btn {
+  background-color: #444;  /* 深灰背景 */
+  color: #000;             /* 黑色叉叉 */
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  position: absolute; /* 固定按鈕在右上角 */
+  top: 0;
+  right: 0;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+  margin-top: 80px;
+  margin-right: 30px;
+}
+
+.close-note-btn:hover {
+  background-color: #333;  /* 更深的灰色背景 on hover */
+}
+
+#markdown-output {
+  max-height: 700px;  /* 設定最大高度，根據需要調整 */
+  overflow-y: auto;   /* 允許垂直滾動 */
+}
 </style>

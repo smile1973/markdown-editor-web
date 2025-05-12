@@ -3,7 +3,13 @@ const { Note } = require('../../dataset/note_table');
 const getUserNotes = async (req, res) => {
   const { userId, folderId } = req.body;
   try {
-    const notes = await Note.find({ user: userId, folder: folderId});
+    let notes;
+
+    if (folderId !== 'null') {
+      notes = await Note.find({ user: userId, folder: folderId });
+    } else {
+      notes = await Note.find({ user: userId });
+    }
 
     res.json({
       message: '成功',

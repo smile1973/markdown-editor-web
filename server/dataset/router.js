@@ -18,6 +18,9 @@ const { updateItem } = require('./operates/updateItem');
 const { updateTask } = require('./operates/updateTask');
 const { deleteTask } = require('./operates/deleteTask');
 const { deleteItem } = require('./operates/deleteItem');
+const { connectTaskNote } = require('./operates/connectTaskNote');
+const { getTaskNotes } = require('./operates/getTaskNotes');
+const { deleteNoteLink } = require('./operates/deleteNoteLink');
 
 router.post('/login', login);
 router.post('/register', register);
@@ -38,5 +41,8 @@ router.post('/updateItem', updateItem);
 router.post('/updateTask', updateTask);
 router.post('/deleteTask', deleteTask);
 router.post('/deleteItem', deleteItem);
+router.post('/connectTaskNote', connectTaskNote);
+router.post('/getTaskNotes', getTaskNotes);
+router.post('/deleteNoteLink', deleteNoteLink);
 
 module.exports = router;

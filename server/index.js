@@ -9,6 +9,7 @@ const { User } = require('./dataset/user_table');
 const { Folder } = require('./dataset/folder_table');
 const { Task } = require('./dataset/task_table');
 const { TaskItem } = require('./dataset/task_item_table');
+const { TaskWithNote } = require('./dataset/task_with_note_table');
 const { initSampleData } = require('./dataset/initSampleData');
 
 const app = express();
