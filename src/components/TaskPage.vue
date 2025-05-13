@@ -6,13 +6,14 @@
     </div>
     
     <!-- Sidebar -->
-    <div class="sidebar">
+    <div class="sidebar" v-if="showSidebar">
+      <!-- 向左收起按鈕 -->
+      <button class="collapse-button" @click="showSidebar = false">◁</button>
+
       <!-- Sidebar Header -->
       <div class="sidebar-header header-with-button">
-        <h1 class="sidebar-title">{{ userName }} 的任務清單</h1> <!-- 這裡會顯示從 localStorage 中獲取的 userName -->
-        <button class="mode-toggle-button" @click="toUserPage">
-          筆記
-        </button>
+        <h1 class="sidebar-title">{{ userName }} 的任務清單</h1>
+        <button class="mode-toggle-button" @click="toUserPage">筆記</button>
       </div>
 
       <!-- Folder & Note List -->
@@ -26,6 +27,11 @@
         </button>
         <button @click="addTask" class="task-title clickable">+ 新增</button>
       </div>
+    </div>
+
+    <!-- Mini Sidebar（收起狀態） -->
+    <div class="mini-sidebar" v-else>
+      <button class="expand-button" @click="showSidebar = true">▷</button>
     </div>
 
     <!-- Main Content (Right) -->
@@ -286,6 +292,7 @@ export default {
       noteContent: null,
       noteName: null,
       noteId: null,
+      showSidebar: true,
     };
   },
   computed: {
@@ -304,12 +311,14 @@ export default {
     taskContainerStyle() {
       return {
         width: this.noteContent !== null ? '48%' : '100%', // 當 noteContent 不為 null 時，task-container 占 48% 寬度
+        transition: 'width 0.3s'
       };
     },
     noteContentStyle() {
       return {
         width: this.noteContent !== null ? '48%' : '0', // 當 noteContent 不為 null 時，note-content-block 占 48% 寬度，否則寬度為0
         display: this.noteContent !== null ? 'block' : 'none', // 根據 noteContent 是否有值來控制顯示與否
+        transition: 'width 0.3s, opacity 0.3s'
       };
     },
   },
@@ -656,12 +665,14 @@ export default {
 
 /* Sidebar (1/4 width) */
 .sidebar {
-  width: 20%; /* 1/4 of the width */
+  width: 350px;
   background-color: #1f1f1f; /* Dark gray background */
   color: white;
   display: flex;
   flex-direction: column;
   padding: 16px;
+  flex-shrink: 0;
+  transition: width 0.3s ease;
 }
 
 .sidebar-header {
@@ -723,9 +734,10 @@ export default {
 
 /* Main Content (Right) */
 .main-content {
-  width: 80%; /* 3/4 of the width */
+  flex-grow: 1;
   padding: 16px;
   background-color: #2e2e2e;
+  transition: all 0.3s;
 }
 
 .main-content h1 {
@@ -786,6 +798,7 @@ export default {
   margin-top: 16px;
   font-size: 18px; /* 放大整體字體 */
   text-align: center; /* 讓所有文字都置中 */
+  min-width: 1000px;
 }
 
 /* Table Header */
@@ -983,9 +996,11 @@ export default {
 
 /* Add scrollable container for the table */
 .scrollable-table-container {
-  max-height: 500px;  /* 限制最大高度，當內容超過這個高度時顯示滾動條 */
+  max-height: 400px;  /* 限制最大高度，當內容超過這個高度時顯示滾動條 */
   overflow-y: auto;   /* 垂直滾動 */
   margin-top: 16px;    /* 調整間距 */
+  overflow-x: auto;
+  width: 100%;
 }
 
 .task-list {
@@ -1373,7 +1388,26 @@ textarea {
 }
 
 #markdown-output {
-  max-height: 700px;  /* 設定最大高度，根據需要調整 */
+  max-height: 400px;  /* 設定最大高度，根據需要調整 */
   overflow-y: auto;   /* 允許垂直滾動 */
+}
+
+.collapse-button,
+.expand-button {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  margin-bottom: 10px;
+  color: white; /* 設定文字顏色為白色 */
+}
+
+/* mini-sidebar 设置为 flex 容器 */
+.mini-sidebar {
+  background-color: #1f1f1f;
+  display: flex; /* 使用 flexbox 布局 */
+  justify-content: center; /* 水平居中 */
+  align-items: center; /* 垂直居中 */
+  height: 100vh; /* 使 sidebar 填满整个视口高度 */
 }
 </style>
