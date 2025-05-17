@@ -1,7 +1,8 @@
 <template>
   <div class="container">
-    <!-- 登出按鈕 -->
-    <div class="logout-container">
+    <!-- 頂部按鈕區域 -->
+    <div class="top-buttons">
+      <button @click="toUserSettings" class="settings-button">使用者設定</button>
       <button @click="handleLogout" class="logout-button">登出</button>
     </div>
     
@@ -9,7 +10,11 @@
     <div class="sidebar">
       <!-- Sidebar Header -->
       <div class="sidebar-header header-with-button">
-        <h1 class="sidebar-title">{{ userName }} 的筆記</h1>
+        <div class="user-info">
+          <img :src="getAvatarUrl(avatarUrl)" v-if="avatarUrl" alt="User Avatar" class="sidebar-avatar">
+          <div class="avatar-placeholder-sidebar" v-else>{{ userName.charAt(0).toUpperCase() }}</div>
+          <h1 class="sidebar-title">{{ userName }} 的筆記</h1>
+        </div>
         <button class="mode-toggle-button" @click="toTaskPage">
           任務清單
         </button>
@@ -48,6 +53,29 @@
       <!-- 根據 FolderId 顯示相應的資料夾內容 -->
       <div v-if="currentFolder">
         <h1>{{ currentFolder.name }} 文件夾</h1>
+        <!-- 搜尋框 -->
+        <div class="search-container">
+          <input 
+            type="text" 
+            v-model="searchTerm" 
+            placeholder="搜尋筆記..." 
+            class="search-input"
+            @input="debouncedSearch"
+          />
+          <button @click="searchNotes" class="search-button">搜尋</button>
+          <button v-if="searchTerm" @click="clearSearch" class="clear-button">清除</button>
+          
+          <!-- 加上星號篩選切換 -->
+          <div class="star-filter">
+            <input 
+              type="checkbox" 
+              id="starFilter" 
+              v-model="filterStarred" 
+              @change="handleStarFilterChange" 
+            />
+            <label for="starFilter">只顯示加星號筆記</label>
+          </div>
+        </div>
         <ul>
           <li v-for="child in currentFolder.children" :key="child._id">
             <button @click="navigateToFolder(child._id)" class="folder-name">
@@ -74,6 +102,9 @@
           </li>
           <li v-for="note in notes" :key="note._id">
             <button @click="navigateToNote(note._id)" class="folder-name">
+              <span class="star-button" @click.stop="toggleStarred(note._id, !note.isStarred)">
+                {{ note.isStarred ? '★' : '☆' }}
+              </span>
               <span class="note-label">📄 {{ note.name }}</span>
               <span
                 class="more-dots"
@@ -101,6 +132,29 @@
       <!-- 如果 FolderId 為 None，顯示第一層的文件夾 -->
       <div v-else>
         <h1>資料夾</h1>
+        <!-- 搜尋框 -->
+        <div class="search-container">
+          <input 
+            type="text" 
+            v-model="searchTerm" 
+            placeholder="搜尋筆記..." 
+            class="search-input"
+            @input="debouncedSearch"
+          />
+          <button @click="searchNotes" class="search-button">搜尋</button>
+          <button v-if="searchTerm" @click="clearSearch" class="clear-button">清除</button>
+          
+          <!-- 加上星號篩選切換 -->
+          <div class="star-filter">
+            <input 
+              type="checkbox" 
+              id="starFilter" 
+              v-model="filterStarred" 
+              @change="handleStarFilterChange" 
+            />
+            <label for="starFilter">只顯示加星號筆記</label>
+          </div>
+        </div>
         <ul>
           <li v-for="folder in firstLevelFolders" :key="folder._id">
             <button @click="navigateToFolder(folder._id)" class="folder-name">
@@ -127,6 +181,9 @@
           </li>
           <li v-for="note in notes" :key="note._id">
             <button @click="navigateToNote(note._id)" class="folder-name">
+              <span class="star-button" @click.stop="toggleStarred(note._id, !note.isStarred)">
+                {{ note.isStarred ? '★' : '☆' }}
+              </span>
               <span class="note-label">📄 {{ note.name }}</span>
               <span
                 class="more-dots"
@@ -167,31 +224,85 @@ export default {
       folders: [],
       notes: [],
       userName: localStorage.getItem('userName') || '未知用戶',
+      avatarUrl: localStorage.getItem('userAvatar') || null,
       currentFolder: null,
       firstLevelFolders: [],
       disabledAddingFolder: false,
       showOptions: {},
       optionsPosition: {}, 
+      searchTerm: '', // 搜尋關鍵字
+      searchTimeout: null, // 用於防抖處理
+      filterStarred: false, // 是否只顯示加星號的筆記
     };
   },
   methods: {
+    toUserSettings() {
+      this.$router.push({ name: 'settings' });
+    },
     toTaskPage(){
       this.$router.push({ name: 'task' });
+    },
+    getAvatarUrl(url) {
+      if (!url) return null;
+      // 如果URL是數據URL或已經是完整URL，則直接返回
+      if (url.startsWith('data:') || url.startsWith('http')) {
+        return url;
+      }
+      
+      // 添加時間戳防止緩存
+      const timestamp = new Date().getTime();
+      
+      // 使用API伺服器的URL（5000端口）而非前端開發伺服器
+      const apiBaseUrl = 'http://localhost:5000';
+      
+      // 直接訪問格式的URL
+      if (url.startsWith('/avatar/')) {
+        const avatarUrl = `${apiBaseUrl}${url}?t=${timestamp}`;
+        console.log('構建頭像URL:', avatarUrl);
+        return avatarUrl;
+      }
+      
+      // 普通的相對路徑
+      const standardUrl = `${apiBaseUrl}${url}?t=${timestamp}`;
+      console.log('標準頭像URL:', standardUrl);
+      return standardUrl;
     },
     handleLogout() {
       localStorage.removeItem('userId');
       localStorage.removeItem('userName');
+      localStorage.removeItem('userAvatar');
       this.$router.push('/');
     },
-    async addFolderButtonHandle() {
-      const folderName = prompt('請輸入資料夾名稱：');
-      this.addFolder(folderName);
-      await this.fetchUserFolders();
-      this.setCurrentFolder();
-    },
-    addNoteButtonHandle() {
-      const noteName = prompt('請輸入筆記名稱：');
-      this.addNote(noteName);
+    async fetchUserAvatar() {
+      try {
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
+          console.warn('獲取頭像失敗：用戶 ID 不存在');
+          this.avatarUrl = null;
+          localStorage.removeItem('userAvatar');
+          return;
+        }
+
+        console.log('正在獲取用戶頭像，userId:', userId);
+        const response = await axios.post('/api/getUserInfo', { userId });
+        
+        if (response.data.user && response.data.user.avatarUrl) {
+          this.avatarUrl = response.data.user.avatarUrl;
+          localStorage.setItem('userAvatar', this.avatarUrl);
+          console.log('成功獲取頭像:', this.avatarUrl);
+        } else {
+          console.log('用戶沒有頭像');
+          this.avatarUrl = null;
+          localStorage.removeItem('userAvatar');
+        }
+      } catch (error) {
+        console.error('獲取使用者頭像失敗:', error);
+        if (error.response) {
+          console.error('錯誤響應:', error.response.data);
+        }
+        this.avatarUrl = null;
+        localStorage.removeItem('userAvatar');
+      }
     },
     async fetchUserFolders() {
       this.folders = []
@@ -229,7 +340,25 @@ export default {
       try {
         const userId = localStorage.getItem('userId');
         const folderId = localStorage.getItem('folderId');
-        const response = await axios.post('/api/getUserNotes', { userId, folderId});
+        
+        // 添加調試信息
+        console.log('發送篩選請求:', {
+          userId,
+          folderId,
+          searchTerm: this.searchTerm,
+          filterStarred: this.filterStarred
+        });
+        
+        const response = await axios.post('/api/getUserNotes', { 
+          userId, 
+          folderId,
+          searchTerm: this.searchTerm, // 搜尋關鍵字
+          filterStarred: this.filterStarred // 星號篩選
+        });
+        
+        // 添加調試信息
+        console.log('收到筆記列表:', response.data.notes);
+        
         const notes = response.data.notes;
         this.notes = notes
       } catch (error) {
@@ -409,12 +538,103 @@ export default {
           alert('無法取得資料夾');
         }
     },
+    async addFolderButtonHandle() {
+      const folderName = prompt('請輸入資料夾名稱：');
+      this.addFolder(folderName);
+      await this.fetchUserFolders();
+      this.setCurrentFolder();
+    },
+    addNoteButtonHandle() {
+      const noteName = prompt('請輸入筆記名稱：');
+      this.addNote(noteName);
+    },
+    // 搜尋筆記的方法
+    searchNotes() {
+      this.fetchUserNotes();
+    },
+    // 防抖處理，避免頻繁請求
+    debouncedSearch() {
+      clearTimeout(this.searchTimeout);
+      this.searchTimeout = setTimeout(() => {
+        this.searchNotes();
+      }, 300); // 300毫秒後執行搜尋
+    },
+    // 清除搜尋並重新加載筆記
+    clearSearch() {
+      this.searchTerm = '';
+      this.fetchUserNotes();
+    },
+    // 切換筆記的星號狀態
+    async toggleStarred(noteId, isStarred) {
+      try {
+        // 調試信息
+        console.log(`切換筆記 ${noteId} 的星號狀態為: ${isStarred}`);
+        
+        const response = await axios.post('/api/updateNote', { 
+          noteId,
+          isStarred
+        });
+        
+        // 調試響應
+        console.log('星號更新響應:', response.data);
+        
+        // 如果更新成功，重新獲取筆記列表
+        if (this.filterStarred) {
+          // 如果正在篩選星號筆記，立即刷新列表
+          await this.fetchUserNotes();
+        } else {
+          // 否則僅更新本地筆記列表中的星號狀態
+          const noteIndex = this.notes.findIndex(note => note._id === noteId);
+          if (noteIndex !== -1) {
+            this.notes[noteIndex].isStarred = isStarred;
+          }
+        }
+        
+        console.log(`筆記 ${noteId} 星號狀態更新為: ${isStarred}`);
+      } catch (error) {
+        console.error('更新星號狀態失敗:', error);
+        alert('無法更新星號狀態');
+      }
+    },
+    // 處理星號篩選切換
+    handleStarFilterChange() {
+      this.fetchUserNotes();
+    },
   },
   async mounted() {
     localStorage.removeItem('folderId');
     await this.fetchUserFolders();
     await this.fetchUserNotes();
     this.setCurrentFolder();
+    await this.fetchUserAvatar(); // 確保頭像加載完成後再繼續
+    
+    // 監聽全局頭像更新事件
+    if (window.$bus) {
+      this.unsubscribe = window.$bus.on('avatar-updated', (avatarUrl) => {
+        console.log('收到頭像更新事件:', avatarUrl);
+        this.avatarUrl = avatarUrl;
+        // 更新 localStorage
+        localStorage.setItem('userAvatar', avatarUrl);
+      });
+    }
+  },
+  async activated() {
+    // 當頁面被重新激活時（如從設置頁面返回），強制刷新頭像
+    console.log("UserPage 被重新激活");
+    // 首先嘗試從 localStorage 獲取頭像
+    const cachedAvatar = localStorage.getItem('userAvatar');
+    if (cachedAvatar) {
+      this.avatarUrl = cachedAvatar;
+      console.log("從 localStorage 加載頭像:", cachedAvatar);
+    }
+    // 然後從服務器獲取最新的頭像
+    await this.fetchUserAvatar();
+  },
+  beforeUnmount() {
+    // 清理事件監聽器
+    if (this.unsubscribe) {
+      this.unsubscribe();
+    }
   }
 };
 </script>
@@ -444,8 +664,36 @@ export default {
   border-bottom: 1px solid #4a5568; /* Border between header and list */
 }
 
+.user-info {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.sidebar-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 10px;
+  border: 1px solid #4a5568;
+}
+
+.avatar-placeholder-sidebar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #4a5568;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  font-size: 18px;
+  font-weight: bold;
+}
+
 .sidebar-title {
-  font-size: 24px;
+  font-size: 20px; /* Adjusted for better fit */
   font-weight: bold;
 }
 
@@ -660,11 +908,13 @@ export default {
   margin-left: 5px;
 }
 
-.logout-container {
+.top-buttons {
   position: fixed;
   top: 20px;
   right: 20px;
   z-index: 1000;
+  display: flex;
+  gap: 10px;
 }
 
 .logout-button {
@@ -677,8 +927,22 @@ export default {
   font-size: 14px;
 }
 
+.settings-button {
+  padding: 8px 16px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
 .logout-button:hover {
   background-color: #cc0000;
+}
+
+.settings-button:hover {
+  background-color: #2980b9;
 }
 
 .header-with-button {
@@ -707,6 +971,77 @@ export default {
 
 .mode-toggle-button:active {
   transform: scale(0.98);
+}
+
+/* Search container */
+.search-container {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.search-input {
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  width: 100%;
+}
+
+.search-button {
+  padding: 8px 16px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.search-button:hover {
+  background-color: #2980b9;
+}
+
+.clear-button {
+  padding: 8px 16px;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-left: 8px;
+}
+
+.clear-button:hover {
+  background-color: #c0392b;
+}
+
+/* 星號按鈕樣式 */
+.star-button {
+  font-size: 18px;
+  margin-right: 10px;
+  cursor: pointer;
+  color: #f39c12; /* 黃色星星 */
+  transition: transform 0.2s ease;
+}
+
+.star-button:hover {
+  transform: scale(1.2);
+}
+
+.star-filter {
+  display: flex;
+  align-items: center;
+  margin-left: 15px;
+  cursor: pointer;
+}
+
+.star-filter input[type="checkbox"] {
+  margin-right: 5px;
+}
+
+.star-filter label {
+  color: #555;
+  font-size: 14px;
 }
 
 </style>

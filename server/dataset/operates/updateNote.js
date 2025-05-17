@@ -1,7 +1,7 @@
 const { Note } = require('../../dataset/note_table');
 
 const updateNote = async (req, res) => {
-  const { noteId, name, content } = req.body;
+  const { noteId, name, content, isStarred } = req.body;
 
   try {
     const note = await Note.findById(noteId);
@@ -12,6 +12,11 @@ const updateNote = async (req, res) => {
 
     note.name = name || note.name; 
     note.content = content || note.content;
+    
+    // 如果提供了 isStarred 參數，則更新星號狀態
+    if (isStarred !== undefined) {
+      note.isStarred = isStarred;
+    }
 
     await note.save();
 

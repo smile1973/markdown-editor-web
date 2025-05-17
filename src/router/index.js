@@ -4,6 +4,7 @@ import Login from '../components/LoginPage.vue'
 import Register from '../components/RegisterPage.vue'
 import UserPage from '../components/UserPage.vue'
 import TaskPage from '../components/TaskPage.vue'
+import UserSettingsPage from '../views/UserSettingsPage.vue'
 
 const routes = [
   {
@@ -32,6 +33,12 @@ const routes = [
     path: '/task',
     name: 'task',
     component: TaskPage,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/settings',
+    name: 'settings',
+    component: UserSettingsPage,
     meta: { requiresAuth: true }
   }
 ]

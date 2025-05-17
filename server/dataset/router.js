@@ -21,6 +21,16 @@ const { deleteItem } = require('./operates/deleteItem');
 const { connectTaskNote } = require('./operates/connectTaskNote');
 const { getTaskNotes } = require('./operates/getTaskNotes');
 const { deleteNoteLink } = require('./operates/deleteNoteLink');
+const { 
+  setSecurityQuestion, 
+  getSecurityQuestion, 
+  recoverPassword,
+  updateUsername,
+  updateAvatar,
+  updatePassword,
+  getUserInfo,
+  fetchSecurityQuestion
+} = require('./operates/userSettingsController');
 
 router.post('/login', login);
 router.post('/register', register);
@@ -44,5 +54,13 @@ router.post('/deleteItem', deleteItem);
 router.post('/connectTaskNote', connectTaskNote);
 router.post('/getTaskNotes', getTaskNotes);
 router.post('/deleteNoteLink', deleteNoteLink);
+router.post('/setSecurityQuestion', setSecurityQuestion);
+router.post('/getSecurityQuestion', getSecurityQuestion);
+router.post('/recoverPassword', recoverPassword);
+router.post('/updateUsername', updateUsername);
+router.post('/updateAvatar', updateAvatar);
+router.post('/updatePassword', updatePassword);
+router.post('/getUserInfo', getUserInfo);
+router.post('/fetchSecurityQuestion', fetchSecurityQuestion);
 
 module.exports = router;

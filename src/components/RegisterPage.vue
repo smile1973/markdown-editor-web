@@ -54,6 +54,12 @@
 <script>
 import axios from 'axios';
 
+// 創建一個 axios 實例，確保使用相對路徑
+const apiClient = axios.create({
+  baseURL: '/api',
+  timeout: 5000
+});
+
 export default {
   data() {
     return {
@@ -72,7 +78,7 @@ export default {
         return;
       }
 
-      axios.post('/api/register', {
+      apiClient.post('/register', {
         name: this.name,
         username: this.username,
         password: this.password
