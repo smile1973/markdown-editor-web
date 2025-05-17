@@ -6,7 +6,10 @@ const noteSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     folder: { type: mongoose.Schema.Types.ObjectId, ref: 'Folder', required: false },
     isStarred: { type: Boolean, default: false },
-    createdAt: { type: Date, default: Date.now }
+    isPublic: { type: Boolean, default: false },
+    publicShareId: { type: String, unique: true, sparse: true },
+    createdAt: { type: Date, default: Date.now },
+    tags: { type: [String], default: [] }
   });
   
   const Note = mongoose.model('Note', noteSchema);

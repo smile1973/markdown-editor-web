@@ -31,6 +31,12 @@ const {
   getUserInfo,
   fetchSecurityQuestion
 } = require('./operates/userSettingsController');
+const { toggleShareNote } = require('./operates/shareNoteController');
+const {
+  addTagToNote,
+  removeTagFromNote,
+  getUserTags
+} = require('./operates/noteTagsController');
 
 router.post('/login', login);
 router.post('/register', register);
@@ -62,5 +68,11 @@ router.post('/updateAvatar', updateAvatar);
 router.post('/updatePassword', updatePassword);
 router.post('/getUserInfo', getUserInfo);
 router.post('/fetchSecurityQuestion', fetchSecurityQuestion);
+router.post('/shareNote', toggleShareNote);
+
+// 標籤相關的 API 路由
+router.post('/addTagToNote', addTagToNote);
+router.post('/removeTagFromNote', removeTagFromNote);
+router.get('/user/:userId/tags', getUserTags);
 
 module.exports = router;

@@ -1,7 +1,7 @@
 const { Note } = require('../../dataset/note_table');
 
 const updateNote = async (req, res) => {
-  const { noteId, name, content, isStarred } = req.body;
+  const { noteId, name, content, isStarred, folderId } = req.body;
 
   try {
     const note = await Note.findById(noteId);
@@ -10,12 +10,15 @@ const updateNote = async (req, res) => {
       return res.status(404).json({ message: '筆記未找到' });
     }
 
-    note.name = name || note.name; 
-    note.content = content || note.content;
+    note.name = name !== undefined ? name : note.name; 
+    note.content = content !== undefined ? content : note.content;
     
-    // 如果提供了 isStarred 參數，則更新星號狀態
     if (isStarred !== undefined) {
       note.isStarred = isStarred;
+    }
+
+    if (folderId !== undefined) {
+      note.folder = folderId ? folderId : null; 
     }
 
     await note.save();
@@ -25,7 +28,7 @@ const updateNote = async (req, res) => {
       note: note,
     });
   } catch (err) {
-    console.error(err);
+    console.error('更新筆記失敗:', err);
     res.status(500).json({ message: '伺服器錯誤' });
   }
 };

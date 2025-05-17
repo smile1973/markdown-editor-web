@@ -5,6 +5,7 @@ import Register from '../components/RegisterPage.vue'
 import UserPage from '../components/UserPage.vue'
 import TaskPage from '../components/TaskPage.vue'
 import UserSettingsPage from '../views/UserSettingsPage.vue'
+import PublicNoteView from '../views/PublicNoteView.vue'
 
 const routes = [
   {
@@ -40,6 +41,12 @@ const routes = [
     name: 'settings',
     component: UserSettingsPage,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/view/note/:publicShareId',
+    name: 'publicNoteView',
+    component: PublicNoteView,
+    meta: { requiresAuth: false }
   }
 ]
 

@@ -212,6 +212,30 @@ app.get('/api/debug-notes', async (req, res) => {
   }
 });
 
+// 公開筆記查看路由
+app.get('/public/note/:publicShareId', async (req, res) => {
+  try {
+    const { publicShareId } = req.params;
+    const note = await Note.findOne({ publicShareId: publicShareId, isPublic: true });
+
+    if (!note) {
+      return res.status(404).json({ message: '找不到公開的筆記或筆記未公開' });
+    }
+
+    // 只返回需要的公開信息，例如名稱和內容
+    res.json({
+      name: note.name,
+      content: note.content,
+      createdAt: note.createdAt, // 可以選擇性返回創建時間
+      // 不應返回 user, folder, isStarred, isPublic, publicShareId 等敏感或內部信息
+    });
+
+  } catch (error) {
+    console.error('獲取公開筆記失敗:', error);
+    res.status(500).json({ message: '伺服器錯誤' });
+  }
+});
+
 // 連接資料庫
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/markdown-editor')
   .then(async () => {
