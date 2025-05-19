@@ -91,40 +91,46 @@
               {{ getSortDescription }}
               <span class="sort-arrow">▼</span>
             </button>
-            <!-- 排序選項下拉菜單 -->
-            <div v-if="showSortOptions" class="sort-options-dropdown">
-              <div class="sort-option-group">
-                <h4>排序欄位</h4>
-                <div 
-                  class="sort-option" 
-                  :class="{ 'active': sortField === 'createdAt' }"
-                  @click="setSortField('createdAt')"
-                >
-                  創建時間
+            <!-- 排序選項模態框 -->
+            <div v-if="showSortOptions" class="modal-overlay" @click.self="closeSortOptionsModal">
+              <div class="modal-content sort-options-modal">
+                <h3>選擇排序方式</h3>
+                <div class="sort-option-group">
+                  <h4>排序欄位</h4>
+                  <div
+                    class="sort-option"
+                    :class="{ 'active': sortField === 'createdAt' }"
+                    @click="setSortField('createdAt')"
+                  >
+                    創建時間
+                  </div>
+                  <div
+                    class="sort-option"
+                    :class="{ 'active': sortField === 'name' }"
+                    @click="setSortField('name')"
+                  >
+                    筆記名稱
+                  </div>
                 </div>
-                <div 
-                  class="sort-option" 
-                  :class="{ 'active': sortField === 'name' }"
-                  @click="setSortField('name')"
-                >
-                  筆記名稱
+                <div class="sort-option-group">
+                  <h4>排序順序</h4>
+                  <div
+                    class="sort-option"
+                    :class="{ 'active': sortOrder === 'asc' }"
+                    @click="setSortOrder('asc')"
+                  >
+                    升序 (A→Z, 舊→新)
+                  </div>
+                  <div
+                    class="sort-option"
+                    :class="{ 'active': sortOrder === 'desc' }"
+                    @click="setSortOrder('desc')"
+                  >
+                    降序 (Z→A, 新→舊)
+                  </div>
                 </div>
-              </div>
-              <div class="sort-option-group">
-                <h4>排序順序</h4>
-                <div 
-                  class="sort-option" 
-                  :class="{ 'active': sortOrder === 'asc' }"
-                  @click="setSortOrder('asc')"
-                >
-                  升序 (A→Z, 舊→新)
-                </div>
-                <div 
-                  class="sort-option" 
-                  :class="{ 'active': sortOrder === 'desc' }"
-                  @click="setSortOrder('desc')"
-                >
-                  降序 (Z→A, 新→舊)
+                <div class="modal-buttons">
+                  <button @click="closeSortOptionsModal" class="button-cancel">關閉</button>
                 </div>
               </div>
             </div>
@@ -234,40 +240,46 @@
               {{ getSortDescription }}
               <span class="sort-arrow">▼</span>
             </button>
-            <!-- 排序選項下拉菜單 -->
-            <div v-if="showSortOptions" class="sort-options-dropdown">
-              <div class="sort-option-group">
-                <h4>排序欄位</h4>
-                <div 
-                  class="sort-option" 
-                  :class="{ 'active': sortField === 'createdAt' }"
-                  @click="setSortField('createdAt')"
-                >
-                  創建時間
+            <!-- 排序選項模態框 -->
+            <div v-if="showSortOptions" class="modal-overlay" @click.self="closeSortOptionsModal">
+              <div class="modal-content sort-options-modal">
+                <h3>選擇排序方式</h3>
+                <div class="sort-option-group">
+                  <h4>排序欄位</h4>
+                  <div
+                    class="sort-option"
+                    :class="{ 'active': sortField === 'createdAt' }"
+                    @click="setSortField('createdAt')"
+                  >
+                    創建時間
+                  </div>
+                  <div
+                    class="sort-option"
+                    :class="{ 'active': sortField === 'name' }"
+                    @click="setSortField('name')"
+                  >
+                    筆記名稱
+                  </div>
                 </div>
-                <div 
-                  class="sort-option" 
-                  :class="{ 'active': sortField === 'name' }"
-                  @click="setSortField('name')"
-                >
-                  筆記名稱
+                <div class="sort-option-group">
+                  <h4>排序順序</h4>
+                  <div
+                    class="sort-option"
+                    :class="{ 'active': sortOrder === 'asc' }"
+                    @click="setSortOrder('asc')"
+                  >
+                    升序 (A→Z, 舊→新)
+                  </div>
+                  <div
+                    class="sort-option"
+                    :class="{ 'active': sortOrder === 'desc' }"
+                    @click="setSortOrder('desc')"
+                  >
+                    降序 (Z→A, 新→舊)
+                  </div>
                 </div>
-              </div>
-              <div class="sort-option-group">
-                <h4>排序順序</h4>
-                <div 
-                  class="sort-option" 
-                  :class="{ 'active': sortOrder === 'asc' }"
-                  @click="setSortOrder('asc')"
-                >
-                  升序 (A→Z, 舊→新)
-                </div>
-                <div 
-                  class="sort-option" 
-                  :class="{ 'active': sortOrder === 'desc' }"
-                  @click="setSortOrder('desc')"
-                >
-                  降序 (Z→A, 新→舊)
+                <div class="modal-buttons">
+                  <button @click="closeSortOptionsModal" class="button-cancel">關閉</button>
                 </div>
               </div>
             </div>
@@ -1248,36 +1260,27 @@ export default {
     // 排序相關方法
     toggleSortOptions() {
       this.showSortOptions = !this.showSortOptions;
-      
-      // 點擊外部關閉下拉菜單
-      if (this.showSortOptions) {
-        setTimeout(() => {
-          const clickOutsideHandler = (e) => {
-            const sortControl = document.querySelector('.sort-control');
-            if (sortControl && !sortControl.contains(e.target)) {
-              this.showSortOptions = false;
-              document.removeEventListener('click', clickOutsideHandler);
-            }
-          };
-          document.addEventListener('click', clickOutsideHandler);
-        }, 0);
-      }
+      //移除點擊外部關閉下拉菜單的邏輯，因為模態框有自己的關閉機制
     },
     
+    closeSortOptionsModal() { // 新增關閉模態框的方法
+      this.showSortOptions = false;
+    },
+
     setSortField(field) {
       if (this.sortField !== field) {
         this.sortField = field;
-        this.fetchUserNotes();
+        this.fetchUserNotes(); // 重新獲取並排序筆記
       }
-      this.showSortOptions = false;
+      this.showSortOptions = false; // 選擇後關閉模態框
     },
     
     setSortOrder(order) {
       if (this.sortOrder !== order) {
         this.sortOrder = order;
-        this.fetchUserNotes();
+        this.fetchUserNotes(); // 重新獲取並排序筆記
       }
-      this.showSortOptions = false;
+      this.showSortOptions = false; // 選擇後關閉模態框
     },
     
     sortNotes(notes) {
@@ -2438,6 +2441,155 @@ export default {
   background-color: #ebf5ff;
   color: #4a90e2;
   font-weight: bold;
+}
+
+.modal-content.sort-options-modal {
+  padding: 20px;
+  border-radius: 8px;
+  width: 80%;
+  max-width: 600px;
+}
+
+.modal-content.sort-options-modal h3 {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+.modal-content.sort-options-modal .sort-option-group {
+  margin-bottom: 15px;
+}
+
+.modal-content.sort-options-modal .sort-option-group:last-child {
+  margin-bottom: 0;
+}
+
+.modal-content.sort-options-modal .sort-option-group h4 {
+  font-size: 14px;
+  color: #555;
+  margin-top: 0;
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-content.sort-options-modal .sort-option {
+  padding: 8px 10px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background-color 0.2s;
+  font-size: 14px;
+  color: #333;
+}
+
+.modal-content.sort-options-modal .sort-option:hover {
+  background-color: #f5f5f5;
+}
+
+.modal-content.sort-options-modal .sort-option.active {
+  background-color: #ebf5ff;
+  color: #4a90e2;
+  font-weight: bold;
+}
+
+.modal-buttons.sort-options-modal {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.modal-buttons.sort-options-modal button {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s ease;
+}
+
+.modal-buttons.sort-options-modal .button-cancel {
+  background-color: #e53e3e; 
+  color: white;
+}
+.modal-buttons.sort-options-modal .button-cancel:hover {
+  background-color: #c53030; 
+}
+
+.modal-buttons.sort-options-modal .button-confirm {
+  background-color: #3182ce; 
+  color: white;
+}
+.modal-buttons.sort-options-modal .button-confirm:hover {
+  background-color: #2c5282; 
+}
+
+/* 排序選項模態框特定樣式 */
+.sort-options-modal {
+  /* 使用與其他模態框相似的樣式 */
+  background-color: #ffffff; 
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 400px; /* 調整寬度以適合排序選項內容 */
+}
+
+.sort-options-modal h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.5em; 
+  color: #333;
+  text-align: center; /* 標題居中 */
+}
+
+.sort-options-modal .sort-option-group {
+  margin-bottom: 20px;
+}
+
+.sort-options-modal .sort-option-group:last-child {
+  margin-bottom: 0; /* 最後一組選項下方不需要額外間距 */
+}
+
+.sort-options-modal .sort-option-group h4 {
+  font-size: 1.1em; /* 稍大一點的組標題 */
+  color: #555;
+  margin-top: 0;
+  margin-bottom: 10px; /* 組標題與選項之間的間距 */
+  padding-bottom: 5px;
+  border-bottom: 1px solid #eee;
+}
+
+.sort-options-modal .sort-option {
+  padding: 12px 15px; /* 增加選項的點擊區域 */
+  cursor: pointer;
+  border-radius: 5px; /* 更圓潤的邊角 */
+  transition: background-color 0.2s, color 0.2s;
+  font-size: 1em;
+  color: #333;
+  display: block; /* 讓選項獨占一行 */
+  margin-bottom: 8px; /* 選項之間的間距 */
+  border: 1px solid #ddd; /* 給選項一個輕微的邊框 */
+}
+
+.sort-options-modal .sort-option:last-child {
+  margin-bottom: 0;
+}
+
+.sort-options-modal .sort-option:hover {
+  background-color: #f0f0f0; /* 滑鼠懸停時的背景色 */
+}
+
+.sort-options-modal .sort-option.active {
+  background-color: #3182ce; /* 與現有 active 樣式一致的藍色 */
+  color: white;
+  font-weight: bold;
+  border-color: #2c5282;
+}
+
+/* 模態框按鈕樣式繼承通用樣式，但可以微調 */
+.sort-options-modal .modal-buttons {
+  margin-top: 25px; /* 按鈕與選項組的間距 */
 }
 </style>
 
