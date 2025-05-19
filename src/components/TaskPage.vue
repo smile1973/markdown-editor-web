@@ -129,6 +129,7 @@
             <table class="task-table">
               <thead>
                 <tr>
+                  <th></th>
                   <th @click="sortBy('name')">
                     名稱
                     <span v-if="sortByField === 'name'">
@@ -157,6 +158,28 @@
               </thead>
               <tbody>
                 <tr v-for="item in showTaskItem" :key="item._id" class="task-row">
+                  <td>
+                    <!-- Button to open the modal -->
+                    <button @click="showTaskListModal(item)" class="move-icon text-white text-xl bg-transparent border-none p-0">
+                      ...
+                    </button>
+
+                    <!-- Modal: show task.name list as buttons -->
+                    <div v-show="showingTaskListForId === item._id" class="modal-overlay">
+                      <div class="note-modal">
+                        <div class="modal-body">
+                            <p class="linkable-notes-title">移動到</p>
+                            <div  v-for="task in tasks" :key="task.id">
+                              <button @click="moveToTask(task._id)" class="note-button">
+                                {{ task.name }}  <!-- 顯示筆記標題，根據你的資料結構調整 -->
+                              </button>
+                            </div>
+                        </div>
+                        <button @click="closeTaskModal" class="modal-cancel-button">close</button>
+                      </div>
+                    </div>
+                  </td>
+                  
                   <td><input v-model="item.name" @blur="updateItem(item)" /></td>
 
                   <td>
@@ -293,6 +316,7 @@ export default {
       noteName: null,
       noteId: null,
       showSidebar: true,
+      showingTaskListForId: null,
     };
   },
   computed: {
@@ -643,6 +667,26 @@ export default {
       localStorage.setItem('noteId', this.noteId);
       console.log(`Navigating to note with ID: ${this.noteId}`);
       this.$router.push({ name: 'editor' });
+    },
+    showTaskListModal(item) {
+      this.showingTaskListForId = item._id;
+    },
+    closeTaskModal() {
+      this.showingTaskListForId = null;
+    },
+    async moveToTask(taskId){
+      try {
+          await axios.post('/api/moveItem', {
+            itemId : this.showingTaskListForId,
+            taskId,
+          });
+          await this.fetchUserTasks();
+          this.handleTaskClick(taskId);
+      } catch (error) {
+          console.error('移動失敗:', error);
+          alert('失敗');
+      }
+      this.closeTaskModal()
     },
   },
   async mounted() {
@@ -1283,7 +1327,7 @@ textarea {
   background-color: #e53935; /* Darker red on hover */
 }
 
-.note-modal {
+.note-modal{
   background-color: #444;
   color: #222;
   padding: 30px 40px;
@@ -1409,5 +1453,13 @@ textarea {
   justify-content: center; /* 水平居中 */
   align-items: center; /* 垂直居中 */
   height: 100vh; /* 使 sidebar 填满整个视口高度 */
+}
+
+.move-icon {
+  color: white;
+  background: transparent;
+  border: none;
+  font-size: 1.25rem; /* 約等於 Tailwind 的 text-xl */
+  padding: 0;
 }
 </style>

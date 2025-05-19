@@ -21,6 +21,7 @@ const { deleteItem } = require('./operates/deleteItem');
 const { connectTaskNote } = require('./operates/connectTaskNote');
 const { getTaskNotes } = require('./operates/getTaskNotes');
 const { deleteNoteLink } = require('./operates/deleteNoteLink');
+const { moveItem } = require('./operates/moveItem');
 const { 
   setSecurityQuestion, 
   getSecurityQuestion, 
@@ -69,6 +70,7 @@ router.post('/updatePassword', updatePassword);
 router.post('/getUserInfo', getUserInfo);
 router.post('/fetchSecurityQuestion', fetchSecurityQuestion);
 router.post('/shareNote', toggleShareNote);
+router.post('/moveItem', moveItem);
 
 // 標籤相關的 API 路由
 router.post('/addTagToNote', addTagToNote);
