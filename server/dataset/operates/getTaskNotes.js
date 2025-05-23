@@ -2,7 +2,7 @@ const { TaskWithNote } = require('../task_with_note_table');
 const { Note } = require('../note_table');
 
 const getTaskNotes = async (req, res) => {
-  const { itemId } = req.body;
+  const { itemId } = req.query;
 
   try {
     // 1. 找出所有與該任務相關的筆記連結

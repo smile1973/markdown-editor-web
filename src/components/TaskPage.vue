@@ -366,7 +366,7 @@ export default {
       this.tasks = []
       try {
         const userId = localStorage.getItem('userId');
-        const response = await axios.post('/api/getUserTasks', { userId });
+        const response = await axios.get('/api/getUserTasks', { params:{userId}});
         this.tasks = response.data.tasks;
         console.log(this.tasks)
       } catch (error) {
@@ -411,7 +411,7 @@ export default {
     async updateItem(item) {
      const taskId = localStorage.getItem('TaskId');
       try {
-            const response = await axios.post('/api/updateItem', {
+            const response = await axios.put('/api/updateItem', {
               itemId: item._id,
               name: item.name, 
               state: item.state,
@@ -430,7 +430,7 @@ export default {
     async updateTaskName(){
       const taskId = localStorage.getItem('TaskId');
       try {
-            const response = await axios.post('/api/updateTask', {
+            const response = await axios.put('/api/updateTask', {
               taskId: taskId,
               name: this.currentTask.name, 
             });
@@ -449,8 +449,10 @@ export default {
       if (confirmed) {
         const taskId = this.currentTask._id;
         try {
-            await axios.post('/api/deleteTask', {
-              taskId,
+            await axios.delete('/api/deleteTask', {
+              data:{
+                taskId,
+              }
             });
             await this.fetchUserTasks();
             this.currentTask = null;
@@ -465,8 +467,10 @@ export default {
     },
     async deleteItem(itemId){
       try {
-          await axios.post('/api/deleteItem', {
-            itemId,
+          await axios.delete('/api/deleteItem', {
+            data:{
+              itemId,
+            }
           });
           await this.fetchUserTasks();
           this.handleTaskClick(this.currentTask._id);
@@ -578,8 +582,10 @@ export default {
     async NoteContent(itemId) {
       this.currentItemId = itemId;
       try {
-          const response = await axios.post('/api/getTaskNotes', {
-            itemId : itemId
+          const response = await axios.get('/api/getTaskNotes', {
+            params:{
+              itemId : itemId
+            }
           });
           this.taskNotes = response.data.taskNotes;
           this.showNoteContent = true;
@@ -609,9 +615,11 @@ export default {
     async showUserNoteList(){
       const userId = localStorage.getItem('userId');
       try {
-            const response = await axios.post('/api/getUserNotes', {
-            userId,
-            folderId: 'null',
+            const response = await axios.get('/api/getUserNotes', {
+            params:{
+              userId,
+              folderId: 'null',
+            }
             });
             this.showUserNotes = response.data.notes;
             this.showUserNotes = this.showUserNotes.filter(note => {
@@ -624,9 +632,11 @@ export default {
     },
     async deleteNoteLink(noteId){
       try {
-            await axios.post('/api/deleteNoteLink', {
-            itemId: this.currentItemId,
-            noteId,
+            await axios.delete('/api/deleteNoteLink', {
+              data:{
+                itemId: this.currentItemId,
+                noteId,
+              }
             });
             this.NoteContent(this.currentItemId);
             this.resetNoteContemt();
@@ -637,7 +647,7 @@ export default {
     },
     async fetchNote(noteId) {
       try {
-        const response = await axios.post('/api/getNote', { noteId });
+        const response = await axios.get('/api/getNote', { params:{ noteId } });
         const note = response.data.note[0];
         this.noteId = note._id;
         this.noteName = note.name;

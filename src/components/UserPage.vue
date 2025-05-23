@@ -614,7 +614,7 @@ export default {
       this.folders = []
       try {
         const userId = localStorage.getItem('userId');
-        const response = await axios.post('/api/getUserFolders', { userId });
+        const response = await axios.get('/api/getUserFolders', { params:{userId} });
         const folders = response.data.folders;
         const folderMap = {};
         folders.forEach(folder => {
@@ -655,11 +655,13 @@ export default {
           filterStarred: this.filterStarred
         });
         
-        const response = await axios.post('/api/getUserNotes', { 
-          userId, 
-          folderId,
-          searchTerm: this.searchTerm, // 搜尋關鍵字
-          filterStarred: this.filterStarred // 星號篩選
+        const response = await axios.get('/api/getUserNotes', { 
+          params: {
+            userId,
+            folderId,
+            searchTerm: this.searchTerm,
+            filterStarred: this.filterStarred
+          }
         });
         
         // 添加調試信息
@@ -818,7 +820,7 @@ export default {
     async renameNote(noteId){
       try {
           const noteName = prompt('請輸入筆記名稱：');
-          const response = await axios.post('/api/updateNote', { noteId, name: noteName, content: null});
+          const response = await axios.put('/api/updateNote', { noteId, name: noteName, content: null});
           console.log(response.data.node);
           alert('修改成功');
           this.setCurrentFolder();
@@ -830,7 +832,7 @@ export default {
     async renameFolder(folderId){
       try {
           const folderName = prompt('請輸入資料夾名稱：');
-          const response = await axios.post('/api/renameFolder', { folderId, name: folderName });
+          const response = await axios.put('/api/renameFolder', { folderId, name: folderName });
           console.log(response.data.folder);
           alert('修改成功');
           await this.fetchUserFolders();
@@ -842,7 +844,7 @@ export default {
     },
     async deleteNote(noteId){
       try {
-          await axios.post('/api/deleteNote', { noteId });
+          await axios.delete('/api/deleteNote', {data: { noteId: noteId }});
           alert('刪除成功');
           this.setCurrentFolder();
         } catch (error) {
@@ -852,7 +854,7 @@ export default {
     },
     async deleteFolder(folderId){
       try {
-          await axios.post('/api/deleteFolder', { folderId });
+          await axios.delete('/api/deleteFolder', { data:{folderId }});
           alert('刪除成功');
           await this.fetchUserFolders();
           this.setCurrentFolder();
@@ -893,7 +895,7 @@ export default {
         // 調試信息
         console.log(`切換筆記 ${noteId} 的星號狀態為: ${isStarred}`);
         
-        const response = await axios.post('/api/updateNote', { 
+        const response = await axios.put('/api/updateNote', { 
           noteId,
           isStarred
         });

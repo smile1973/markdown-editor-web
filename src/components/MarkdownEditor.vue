@@ -325,7 +325,7 @@
       },
       async fetchNote() {
         try {
-          const response = await axios.post('/api/getNote', { noteId: this.noteId});
+          const response = await axios.get('/api/getNote', { params:{ noteId: this.noteId }});
           const note = response.data.note[0];
           this.noteTitle = note.name || '';
           this.lastSavedTitle = this.noteTitle;
@@ -350,7 +350,7 @@
           
           const content = this.editor ? this.editor.state.doc.toString() : this.markdownText;
           
-          const response = await axios.post('/api/updateNote', { 
+          const response = await axios.put('/api/updateNote', { 
             noteId: this.noteId, 
             name: this.noteTitle, 
             content: content

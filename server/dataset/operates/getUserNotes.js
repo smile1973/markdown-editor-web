@@ -1,7 +1,7 @@
 const { Note } = require('../../dataset/note_table');
 
 const getUserNotes = async (req, res) => {
-  const { userId, folderId, searchTerm, filterStarred } = req.body;
+  const { userId, folderId, searchTerm, filterStarred } = req.query;
   try {
     // 添加調試信息
     console.log('收到請求參數:', {
@@ -26,7 +26,7 @@ const getUserNotes = async (req, res) => {
     }
 
     // 如果需要篩選已加星號的筆記
-    if (filterStarred) {
+    if (filterStarred === 'true') {
       query.isStarred = true;
       console.log('篩選星號筆記: true');
     }

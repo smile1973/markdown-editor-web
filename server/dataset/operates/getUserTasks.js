@@ -2,7 +2,7 @@ const { Task } = require('../task_table');
 const { TaskItem } = require('../task_item_table');
 
 const getUserTasks = async (req, res) => {
-  const { userId } = req.body;
+  const { userId } = req.query;
   try {
     const tasks = await Task.find({ user: userId });
     const taskIds = tasks.map(task => task._id);

@@ -1,7 +1,7 @@
 const { Folder } = require('../folder_table');
 
 const getUserFolders = async (req, res) => {
-  const { userId } = req.body;
+  const { userId } = req.query;
   try {
     const folders = await Folder.find({ user: userId });
 

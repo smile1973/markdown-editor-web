@@ -1,7 +1,7 @@
 const { Note } = require('../../dataset/note_table');
 
 const getNote = async (req, res) => {
-  const { noteId } = req.body;
+  const { noteId } = req.query;
   try {
     const note = await Note.find({ _id : noteId});
     res.json({
