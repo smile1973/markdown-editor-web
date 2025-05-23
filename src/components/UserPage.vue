@@ -946,7 +946,10 @@ export default {
 
       // 如果筆記已經是公開的，並且有 publicShareId，則直接生成連結
       if (this.noteToShare.isPublic && this.noteToShare.publicShareId) {
-        this.shareLink = `http://localhost:8080/view/note/${this.noteToShare.publicShareId}`;
+        // 使用當前的協議、主機和端口來生成動態的分享連結
+        const protocol = window.location.protocol;
+        const host = window.location.host;
+        this.shareLink = `${protocol}//${host}/view/note/${this.noteToShare.publicShareId}`;
       }
     },
     async toggleNotePublicStatus() {

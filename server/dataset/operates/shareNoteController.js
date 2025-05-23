@@ -25,11 +25,15 @@ const toggleShareNote = async (req, res) => {
       }
       note.isPublic = true;
       await note.save();
+      
+      // 使用環境變數或預設值來設定前端URL
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+      
       return res.json({
         message: '筆記已設為公開分享',
         isPublic: note.isPublic,
         publicShareId: note.publicShareId,
-        shareLink: `http://localhost:8080/view/note/${note.publicShareId}` 
+        shareLink: `${frontendUrl}/view/note/${note.publicShareId}` 
       });
     } else {
       note.isPublic = false;
