@@ -41,26 +41,29 @@ const {
 
 router.post('/login', login);
 router.post('/register', register);
-router.post('/getUserNotes', getUserNotes);
-router.post('/getUserFolders', getUserFolders);
+router.get('/getUserNotes', getUserNotes);
+router.get('/getUserFolders', getUserFolders);
 router.post('/createFolder', createFolder);
 router.post('/createNote', createNote);
-router.post('/getNote', getNote);
-router.post('/updateNote', updateNote);
-router.post('/renameFolder', renameFolder);
-router.post('/deleteNote', deleteNote);
-router.post('/deleteFolder', deleteFolder);
-router.post('/uploadImage', uploadImage);
+router.get('/getNote', getNote);
+router.put('/updateNote', updateNote);
+router.put('/renameFolder', renameFolder);
+router.delete('/deleteNote', deleteNote);
+router.delete('/deleteFolder', deleteFolder);
 router.post('/createTask', createTask);
-router.post('/getUserTasks', getUserTasks);
+router.get('/getUserTasks', getUserTasks);
 router.post('/createTaskItem', createTaskItem);
-router.post('/updateItem', updateItem);
-router.post('/updateTask', updateTask);
-router.post('/deleteTask', deleteTask);
-router.post('/deleteItem', deleteItem);
+router.put('/updateItem', updateItem);
+router.put('/updateTask', updateTask);
+router.delete('/deleteTask', deleteTask);
+router.delete('/deleteItem', deleteItem);
 router.post('/connectTaskNote', connectTaskNote);
-router.post('/getTaskNotes', getTaskNotes);
-router.post('/deleteNoteLink', deleteNoteLink);
+router.get('/getTaskNotes', getTaskNotes);
+router.delete('/deleteNoteLink', deleteNoteLink);
+router.post('/moveItem', moveItem);
+
+// ##################################################
+router.post('/uploadImage', uploadImage);
 router.post('/setSecurityQuestion', setSecurityQuestion);
 router.post('/getSecurityQuestion', getSecurityQuestion);
 router.post('/recoverPassword', recoverPassword);
@@ -70,7 +73,6 @@ router.post('/updatePassword', updatePassword);
 router.post('/getUserInfo', getUserInfo);
 router.post('/fetchSecurityQuestion', fetchSecurityQuestion);
 router.post('/shareNote', toggleShareNote);
-router.post('/moveItem', moveItem);
 
 // 標籤相關的 API 路由
 router.post('/addTagToNote', addTagToNote);
