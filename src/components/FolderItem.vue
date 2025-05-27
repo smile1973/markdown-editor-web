@@ -1,4 +1,4 @@
-<template>getTaskNotes
+<template>
   <li class="folder-item" :class="{'selectable-item': isSelectable, 'selected': isSelected}">
     <button
       class="folder-name"

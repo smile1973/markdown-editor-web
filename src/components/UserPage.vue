@@ -590,7 +590,9 @@ export default {
         }
 
         console.log('正在獲取用戶頭像，userId:', userId);
-        const response = await axios.post('/api/getUserInfo', { userId });
+        const response = await axios.get('/api/getUserInfo', {
+          params: { userId }
+        });
         
         if (response.data.user && response.data.user.avatarUrl) {
           this.avatarUrl = response.data.user.avatarUrl;
@@ -1173,10 +1175,12 @@ export default {
 
       try {
         // 調用後端 API 移除標籤
-        const response = await axios.post('/api/removeTagFromNote', {
-          noteId: this.noteToTag._id,
-          tag: tagName,
-          userId: userId
+        const response = await axios.delete('/api/removeTagFromNote', {
+          data: {
+            noteId: this.noteToTag._id,
+            tag: tagName,
+            userId: userId
+          }
         });
 
         if (response.data.success) {

@@ -64,7 +64,7 @@ const setSecurityQuestion = async (req, res) => {
 // 獲取用戶安全問題
 const getSecurityQuestion = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const { userId } = req.query;
 
     if (!userId) {
       return res.status(400).json({ message: '缺少必要參數' });
@@ -260,7 +260,7 @@ const updatePassword = async (req, res) => {
 // 獲取用戶資料
 const getUserInfo = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const { userId } = req.query;
 
     if (!userId) {
       return res.status(400).json({ message: '缺少必要參數' });
@@ -282,7 +282,7 @@ const getUserInfo = async (req, res) => {
 // 獲取安全問題（根據用戶名）
 const fetchSecurityQuestion = async (req, res) => {
   try {
-    const { username } = req.body;
+    const { username } = req.query;
 
     if (!username) {
       return res.status(400).json({ message: '缺少必要參數' });

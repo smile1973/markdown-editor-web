@@ -62,21 +62,22 @@ router.get('/getTaskNotes', getTaskNotes);
 router.delete('/deleteNoteLink', deleteNoteLink);
 router.post('/moveItem', moveItem);
 
-// ##################################################
+
 router.post('/uploadImage', uploadImage);
 router.post('/setSecurityQuestion', setSecurityQuestion);
-router.post('/getSecurityQuestion', getSecurityQuestion);
+router.get('/getSecurityQuestion', getSecurityQuestion);
+// ##################################################
 router.post('/recoverPassword', recoverPassword);
-router.post('/updateUsername', updateUsername);
+router.put('/updateUsername', updateUsername);
 router.post('/updateAvatar', updateAvatar);
-router.post('/updatePassword', updatePassword);
-router.post('/getUserInfo', getUserInfo);
-router.post('/fetchSecurityQuestion', fetchSecurityQuestion);
+router.put('/updatePassword', updatePassword);
+router.get('/getUserInfo', getUserInfo);
+router.get('/fetchSecurityQuestion', fetchSecurityQuestion);
 router.post('/shareNote', toggleShareNote);
 
 // 標籤相關的 API 路由
 router.post('/addTagToNote', addTagToNote);
-router.post('/removeTagFromNote', removeTagFromNote);
+router.delete('/removeTagFromNote', removeTagFromNote);
 router.get('/user/:userId/tags', getUserTags);
 
 module.exports = router;

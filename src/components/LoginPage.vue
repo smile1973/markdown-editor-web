@@ -145,8 +145,10 @@ export default {
         this.recoveryMessage = '正在查詢...';
         this.recoveryMessageType = 'info';
         
-        const response = await apiClient.post('/fetchSecurityQuestion', {
-          username: this.recoverUsername
+        const response = await apiClient.get('/fetchSecurityQuestion', {
+          params: {
+            username: this.recoverUsername
+          }
         });
 
         if (response.data.securityQuestion) {

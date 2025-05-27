@@ -160,8 +160,10 @@ export default {
     },
     async fetchSecurityQuestion() {
       try {
-        const response = await axios.post('/api/getSecurityQuestion', {
-          userId: this.userId
+        const response = await axios.get('/api/getSecurityQuestion', {
+          params: {
+            userId: this.userId
+          }
         });
         this.hasSecurityQuestion = response.data.hasSecurityQuestion;
         if (this.hasSecurityQuestion) {
@@ -206,7 +208,9 @@ export default {
     },
     async fetchUserInfo() {
       try {
-        const response = await axios.post('/api/getUserInfo', { userId: this.userId });
+        const response = await axios.get('/api/getUserInfo', {
+          params: { userId: this.userId }
+        });
         const user = response.data.user;
         this.newUserName = user.name;
         this.userName = user.name; 
@@ -328,7 +332,7 @@ export default {
         return;
       }
       try {
-        await axios.post('/api/updateUsername', {
+        await axios.put('/api/updateUsername', {
           userId: this.userId,
           newName: this.newUserName
         });
@@ -355,7 +359,7 @@ export default {
       }
       // 可在此處添加新密碼強度驗證
       try {
-        await axios.post('/api/updatePassword', {
+        await axios.put('/api/updatePassword', {
           userId: this.userId,
           oldPassword: this.oldPassword,
           newPassword: this.newPassword
