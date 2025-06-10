@@ -63,7 +63,7 @@
   import { markdown } from '@codemirror/lang-markdown';
   import { oneDark } from '@codemirror/theme-one-dark';
   import { keymap } from '@codemirror/view';
-  import { defaultKeymap, indentWithTab } from '@codemirror/commands';
+  import { defaultKeymap, indentWithTab, history, historyKeymap } from '@codemirror/commands';
   import { lineNumbers } from '@codemirror/view';
   import { foldGutter} from '@codemirror/language';
   import { syntaxHighlighting, HighlightStyle, indentUnit } from '@codemirror/language';
@@ -176,6 +176,11 @@
           const startState = EditorState.create({
             doc: this.markdownText,
             extensions: [
+              history({
+                minDepth: 50,        // 最小歷史深度
+                maxDepth: 500,       // 最大歷史深度  
+                newGroupDelay: 500, // 延遲1秒創建新組
+              }),
               lineNumbers(),
               markdown(),
               syntaxHighlighting(customMarkdownHighlight),
@@ -191,6 +196,7 @@
               }),
               keymap.of([
                 ...defaultKeymap,
+                ...historyKeymap,
                 indentWithTab
               ]),
               EditorView.updateListener.of(update => {
@@ -332,11 +338,6 @@
           this.$emit('title-change', this.noteTitle);
           if (note && note.content != null) {
             this.markdownText = note.content;
-            if (this.editor) {
-              this.editor.dispatch({
-                changes: { from: 0, to: this.editor.state.doc.length, insert: note.content }
-              });
-            }
           }
         } catch (error) {
           console.error('取得筆記失敗：', error);
@@ -570,7 +571,6 @@
       },
     },
     async mounted() {
-      this.initEditor();
       marked.setOptions({
         highlight: function(code) {
           return hljs.highlightAuto(code).value;
@@ -579,8 +579,13 @@
         breaks: true
       });
       
+      // 先載入筆記內容
       await this.fetchNote();
       this.lastSavedContent = this.markdownText;
+      
+      // 再初始化編輯器（這樣編輯器會使用載入的內容作為初始狀態）
+      this.initEditor();
+      
       this.updatePreview();
     }
   };
