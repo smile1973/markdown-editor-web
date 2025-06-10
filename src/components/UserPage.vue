@@ -1063,7 +1063,7 @@ export default {
 
       try {
         console.log(`執行移動筆記: ${this.noteToMoveId} 到資料夾: ${this.targetMoveFolderId}`);
-        const response = await axios.post('/api/updateNote', {
+        const response = await axios.put('/api/updateNote', {
           noteId: this.noteToMoveId,
           folderId: this.targetMoveFolderId, // 傳遞目標資料夾ID
         });
